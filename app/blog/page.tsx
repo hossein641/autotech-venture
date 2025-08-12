@@ -1,32 +1,327 @@
-import { Metadata } from 'next';
+// app/blog/page.tsx - Updated to use API data
+'use client';
+
+import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import BlogCard from '@/components/blog/BlogCard';
+import BlogFilters from '@/components/blog/BlogFilters';
+import FeaturedPost from '@/components/blog/FeaturedPost';
+import { BlogPostData } from '@/components/blog/BlogCard';
+import { BookOpen, TrendingUp, Users, Calendar, Search, ArrowRight, Loader2 } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Blog | AI & Tech Insights | AutoTech Venture',
-  description: 'Latest insights on AI, automation, and technology trends from the AutoTech Venture team in Dayton, Ohio.',
-  alternates: {
-    canonical: 'https://www.atechv.com/blog',
-  },
-};
+interface BlogResponse {
+  posts: BlogPostData[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+interface Category {
+  name: string;
+  count: number;
+  slug: string;
+}
 
 export default function BlogPage() {
+  // Set page title and metadata
+  useEffect(() => {
+    document.title = 'AI & Automation Blog | AutoTech Venture | Expert Insights Dayton Ohio';
+    
+    // Update meta description
+    const metaDescription = document.querySelector('meta[name="description"]') || 
+                           document.createElement('meta');
+    metaDescription.setAttribute('name', 'description');
+    metaDescription.setAttribute('content', 
+      'Expert insights on AI, automation, web development, and digital transformation from AutoTech Venture\'s PhD team.'
+    );
+    if (!document.querySelector('meta[name="description"]')) {
+      document.head.appendChild(metaDescription);
+    }
+  }, []);
+
+  // State management
+  const [posts, setPosts] = useState<BlogPostData[]>([]);
+  const [featuredPost, setFeaturedPost] = useState<BlogPostData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  // Fetch blog posts from API
+  const fetchPosts = async (page = 1, category = '', search = '') => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '9', // Show 9 posts per page + 1 featured
+      });
+      
+      if (category) params.append('category', category);
+      if (search) params.append('search', search);
+
+      const response = await fetch(`/api/blog?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch posts');
+
+      const data: BlogResponse = await response.json();
+      
+      // Separate featured and regular posts
+      const featured = data.posts.find(post => post.featured);
+      const regular = data.posts.filter(post => !post.featured);
+      
+      setFeaturedPost(featured || data.posts[0]); // Fallback to first post if no featured
+      setPosts(regular);
+      setTotalPages(data.pagination.totalPages);
+      setCurrentPage(data.pagination.page);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load posts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch categories for filters
+  const fetchCategories = async () => {
+    try {
+      // We'll get categories from the posts for now
+      // In the future, you can create a separate /api/categories endpoint
+      const response = await fetch('/api/blog?limit=100');
+      if (!response.ok) throw new Error('Failed to fetch categories');
+
+      const data: BlogResponse = await response.json();
+      
+      // Extract unique categories with counts
+      const categoryMap = new Map<string, number>();
+      data.posts.forEach(post => {
+        const current = categoryMap.get(post.category) || 0;
+        categoryMap.set(post.category, current + 1);
+      });
+
+      const categoryList: Category[] = Array.from(categoryMap.entries()).map(([name, count]) => ({
+        name,
+        count,
+        slug: name.toLowerCase().replace(/\s+/g, '-'),
+      }));
+
+      setCategories(categoryList);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  };
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchPosts();
+    fetchCategories();
+  }, []);
+
+  // Handle search and filter changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      fetchPosts(1, selectedCategory, searchQuery);
+    }, 300); // Debounce search
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategory]);
+
+  // Handle pagination
+  const handlePageChange = (page: number) => {
+    fetchPosts(page, selectedCategory, searchQuery);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">Oops! Something went wrong</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => fetchPosts()}
+            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <main>
+    <div className="min-h-screen bg-gray-50">
       <Header />
-      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+      
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
-              Latest Insights
+            <div className="flex justify-center mb-6">
+              <BookOpen className="w-16 h-16 text-indigo-300" />
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-6">
+              AI & Automation Insights
             </h1>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Stay updated with the latest trends in AI, automation, and technology.
+            <p className="text-xl md:text-2xl text-indigo-100 mb-8 max-w-3xl mx-auto">
+              Expert insights on AI, automation, and digital transformation from our PhD team. 
+              Stay ahead of the curve with cutting-edge strategies and real-world case studies.
             </p>
+            
+            {/* Search Bar */}
+            <div className="max-w-xl mx-auto">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search articles..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-12 pr-4 py-4 text-gray-900 rounded-xl border-0 focus:ring-2 focus:ring-indigo-300 focus:outline-none"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Featured Post */}
+      {featuredPost && !loading && (
+        <section className="py-16 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl font-bold text-gray-900 mb-4">Featured Article</h2>
+              <p className="text-lg text-gray-600">Don't miss our latest in-depth analysis</p>
+            </div>
+            <FeaturedPost post={featuredPost} />
+          </div>
+        </section>
+      )}
+
+      {/* Main Content */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-4 gap-8">
+            {/* Sidebar */}
+            <aside className="lg:col-span-1">
+              <div className="sticky top-8">
+                <BlogFilters 
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={setSelectedCategory}
+                />
+                
+                {/* Newsletter Signup */}
+                <div className="bg-indigo-50 rounded-xl p-6 mt-8">
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Stay Updated</h3>
+                  <p className="text-gray-600 mb-4">Get the latest AI and automation insights delivered to your inbox.</p>
+                  <div className="space-y-3">
+                    <input
+                      type="email"
+                      placeholder="Enter your email"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                    <button className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition-colors">
+                      Subscribe
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            {/* Posts Grid */}
+            <main className="lg:col-span-3">
+              {loading ? (
+                <div className="flex justify-center items-center py-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                  <span className="ml-3 text-gray-600">Loading articles...</span>
+                </div>
+              ) : posts.length === 0 ? (
+                <div className="text-center py-20">
+                  <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">No articles found</h3>
+                  <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+                </div>
+              ) : (
+                <>
+                  <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-8 mb-12">
+                    {posts.map((post) => (
+                      <BlogCard key={post.id} post={post} />
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center items-center space-x-2">
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Previous
+                      </button>
+                      
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => handlePageChange(page)}
+                          className={`px-4 py-2 border rounded-lg ${
+                            currentPage === page
+                              ? 'bg-indigo-600 text-white border-indigo-600'
+                              : 'text-gray-600 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </main>
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action */}
+      <section className="bg-indigo-600 py-16">
+        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl font-bold text-white mb-4">
+            Ready to Transform Your Business?
+          </h2>
+          <p className="text-indigo-100 mb-8 text-lg">
+            Our PhD experts can help you transform these insights into actionable results for your Ohio business.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/contact"
+              className="bg-white text-indigo-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              Get Free Consultation
+            </a>
+            <a
+              href="/services"
+              className="bg-indigo-700 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-800 transition-colors border-2 border-indigo-400"
+            >
+              View Our Services
+            </a>
+          </div>
+        </div>
+      </section>
+
       <Footer />
-    </main>
+    </div>
   );
 }
