@@ -113,3 +113,22 @@ export function transformPostFromDB(post: BlogPostQueryResult): BlogPostData {
     },
   };
 }
+
+// Add to lib/types.ts
+
+
+export interface PaginationParams {
+  page?: number;
+  limit?: number;
+  offset?: number;
+  sortBy?: string;      // ✅ Add this
+  sortOrder?: string;   // ✅ Add this
+}
+
+export interface BlogPostFilters {
+  category?: string;
+  featured?: boolean;
+  status?: string;
+  search?: string;
+  tags?: string[];      // ✅ Keep as 'tags' (not 'tag')
+}

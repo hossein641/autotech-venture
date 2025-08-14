@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import { NextRequest } from 'next/server';
 import { prisma } from './prisma';
 
-const JWT_SECRET = process.env.JWT_SECRET!;
+// ✅ Fixed: Ensure JWT_SECRET is always a string
+const JWT_SECRET = (process.env.JWT_SECRET || 'development-secret-change-in-production') as string;
 
 export interface JWTPayload {
   userId: string;
@@ -20,13 +21,17 @@ export async function verifyPassword(password: string, hashedPassword: string): 
 }
 
 export function generateToken(payload: JWTPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { 
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d' 
-  });
+  return jwt.sign(
+    payload, 
+    JWT_SECRET, 
+    { expiresIn: '7d' } as jwt.SignOptions
+  );
 }
 
 export function verifyToken(token: string): JWTPayload {
-  return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  // ✅ Fixed: Proper type handling for jwt.verify
+  const decoded = jwt.verify(token, JWT_SECRET);
+  return decoded as JWTPayload;
 }
 
 export async function getUserFromRequest(request: NextRequest) {

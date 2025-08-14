@@ -24,9 +24,10 @@ export class BlogService {
       where.category = { slug: filters.category };
     }
 
-    if (filters.tag) {
-      where.tags = { some: { tag: { slug: filters.tag } } };
-    }
+// ✅ Correct property name
+if (filters.tags && filters.tags.length > 0) {
+  where.tags = { some: { tag: { name: { in: filters.tags } } } };
+}
 
     if (filters.featured !== undefined) {
       where.featured = filters.featured;
@@ -34,8 +35,8 @@ export class BlogService {
 
     if (filters.search) {
       where.OR = [
-        { title: { contains: filters.search, mode: 'insensitive' } },
-        { excerpt: { contains: filters.search, mode: 'insensitive' } },
+        { title: { contains: filters.search } },
+        { excerpt: { contains: filters.search} },
       ];
     }
 
@@ -118,9 +119,9 @@ export class BlogService {
       where: {
         status: PostStatus.PUBLISHED,
         OR: [
-          { title: { contains: query, mode: 'insensitive' } },
-          { excerpt: { contains: query, mode: 'insensitive' } },
-          { content: { contains: query, mode: 'insensitive' } },
+          { title: { contains: query} },
+          { excerpt: { contains: query} },
+          { content: { contains: query} },
         ],
       },
       include: {

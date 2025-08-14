@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
         featuredImage: data.featuredImage,
         metaTitle: data.metaTitle,
         metaDescription: data.metaDescription,
-        keywords: data.keywords,
+        keywords: JSON.stringify(data.keywords || []),
         featured: data.featured,
         status: process.env.AUTO_PUBLISH_ENABLED === 'true' 
           ? 'PUBLISHED' 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
         authorId: defaultAuthor.id,
         categoryId: data.categoryId,
         tags: {
-          create: data.tagIds.map(tagId => ({ tagId })),
+          create: (data.tagIds || []).map(tagId => ({ tagId })),
         },
       },
       include: {
@@ -82,11 +82,33 @@ export async function POST(request: NextRequest) {
         },
       },
     });
-
     return NextResponse.json({
       success: true,
-      post: transformPost(post),
+      post: {
+        id: post.id,
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt,
+        content: post.content,
+        featuredImage: post.featuredImage,
+        author: {
+          name: post.author.name,
+          avatar: post.author.avatar,
+          title: post.author.title,
+        },
+        publishedAt: post.publishedAt,
+        readTime: post.readTime,
+        tags: post.tags.map(pt => pt.tag.name),
+        category: post.category.name,
+        featured: post.featured,
+        seo: {
+          metaTitle: post.metaTitle,
+          metaDescription: post.metaDescription,
+          keywords: JSON.parse(post.keywords || '[]'),
+        },
+      },
     }, { status: 201 });
+
   } catch (error) {
     console.error('Webhook error:', error);
     return NextResponse.json(
