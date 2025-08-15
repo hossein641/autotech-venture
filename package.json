@@ -12,10 +12,11 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset",
+    "setup-turso": "tsx scripts/setup-turso.ts",
     "postinstall": "prisma generate"
-
   },
   "dependencies": {
+    "@libsql/client": "^0.15.11",
     "@next/bundle-analyzer": "^15.4.6",
     "@prisma/client": "^6.13.0",
     "@radix-ui/react-slot": "^1.1.0",
@@ -24,6 +25,7 @@
     "bcryptjs": "^3.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.1",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.453.0",
     "next": "^14.2.31",
@@ -45,6 +47,7 @@
     "postcss": "^8.4.39",
     "prisma": "^6.13.0",
     "tailwindcss": "^3.4.6",
+    "tsx": "^4.20.4",
     "typescript": "^5.5.3"
   },
   "prisma": {

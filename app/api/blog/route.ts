@@ -37,9 +37,9 @@ export async function GET(request: NextRequest) {
     // Search functionality
     if (validatedParams.search) {
       where.OR = [
-        { title: { contains: validatedParams.search, mode: 'insensitive' } },
-        { excerpt: { contains: validatedParams.search, mode: 'insensitive' } },
-        { content: { contains: validatedParams.search, mode: 'insensitive' } },
+        { title: { contains: validatedParams.search } },
+        { excerpt: { contains: validatedParams.search } },
+        { content: { contains: validatedParams.search } },
       ];
     }
 
