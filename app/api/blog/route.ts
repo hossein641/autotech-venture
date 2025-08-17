@@ -45,6 +45,10 @@ export async function GET(request: NextRequest) {
 }
 
 // Production: Turso database query
+// app/api/blog/route.ts - FIXED VERSION
+// Replace your handleTursoQuery function with this corrected version
+
+// Production: Turso database query - FIXED
 async function handleTursoQuery(validatedParams: any) {
   try {
     // Import Turso client
@@ -61,10 +65,19 @@ async function handleTursoQuery(validatedParams: any) {
       FROM BlogPost bp
       JOIN User u ON bp.authorId = u.id
       JOIN Category c ON bp.categoryId = c.id
-      WHERE bp.status = 'PUBLISHED'
+      WHERE 1=1
     `;
 
     const args: any[] = [];
+    
+    // CRITICAL FIX: Add status filtering based on query parameter
+    if (validatedParams.status) {
+      sql += ` AND bp.status = ?`;
+      args.push(validatedParams.status);
+    } else {
+      // Default: only show PUBLISHED posts for public API
+      sql += ` AND bp.status = 'PUBLISHED'`;
+    }
     
     // Add search filter
     if (validatedParams.search) {
@@ -106,47 +119,65 @@ async function handleTursoQuery(validatedParams: any) {
     sql += ` LIMIT ? OFFSET ?`;
     args.push(validatedParams.limit, (validatedParams.page - 1) * validatedParams.limit);
 
+    console.log('🔍 Turso SQL Query:', sql);
+    console.log('🔍 Query Args:', args);
+
     const result = await turso.execute({ sql, args });
 
-    // Transform Turso results to match BlogPostQueryResult format
-    const transformedPosts = result.rows.map(row => ({
-      id: row.id as string,
-      slug: row.slug as string,
-      title: row.title as string,
-      excerpt: row.excerpt as string,
-      content: row.content as string,
-      featuredImage: row.featuredImage as string || null,
-      publishedAt: row.publishedAt ? new Date(row.publishedAt as string) : null,
-      createdAt: new Date(row.createdAt as string),
-      updatedAt: new Date(row.updatedAt as string),
-      readTime: row.readTime as number || 5,
-      featured: Boolean(row.featured),
-      status: row.status as "DRAFT" | "PUBLISHED" | "ARCHIVED", // Cast to proper enum type
-      metaTitle: row.metaTitle as string,
-      metaDescription: row.metaDescription as string,
-      keywords: row.keywords as string,
-      author: {
-        name: row.authorName as string,
-        avatar: row.authorAvatar as string || '/images/team/hossein.jpg',
-        title: row.authorTitle as string
-      },
-      category: {
-        name: row.categoryName as string,
-        slug: row.categorySlug as string,
-        color: row.categoryColor as string || null
-      },
-      tags: [] // Simplified for now, can be enhanced later
-    }));
+    console.log('🔍 Turso Result Count:', result.rows.length);
 
-    // Apply transformPostFromDB to each post (now matches BlogPostQueryResult type)
-    const finalPosts = transformedPosts.map(transformPostFromDB);
+    // CRITICAL FIX: Transform Turso results with proper status field
+    const transformedPosts = result.rows.map(row => {
+      const post = {
+        id: String(row.id),
+        slug: String(row.slug),
+        title: String(row.title),
+        excerpt: String(row.excerpt),
+        content: String(row.content),
+        featuredImage: row.featuredImage ? String(row.featuredImage) : null,
+        publishedAt: row.publishedAt ? String(row.publishedAt) : null,
+        updatedAt: row.updatedAt ? String(row.updatedAt) : null,
+        readTime: Number(row.readTime) || 5,
+        featured: Boolean(row.featured),
+        status: String(row.status), // FIXED: Ensure status is included as string
+        author: {
+          name: String(row.authorName),
+          avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
+          title: row.authorTitle ? String(row.authorTitle) : null
+        },
+        category: String(row.categoryName),
+        tags: [], // Simplified for now
+        seo: {
+          metaTitle: row.metaTitle ? String(row.metaTitle) : null,
+          metaDescription: row.metaDescription ? String(row.metaDescription) : null,
+          keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
+        }
+      };
 
-    // Get total count for pagination
+      console.log('🔍 Transformed Post:', { 
+        title: post.title, 
+        status: post.status, 
+        featured: post.featured 
+      });
+
+      return post;
+    });
+
+    // Get total count for pagination with same filters
     let countSql = `SELECT COUNT(*) as total FROM BlogPost bp`;
     const countArgs: any[] = [];
     
-    if (validatedParams.category || validatedParams.search || validatedParams.featured !== undefined || validatedParams.authorId) {
-      countSql += ` JOIN User u ON bp.authorId = u.id JOIN Category c ON bp.categoryId = c.id WHERE bp.status = 'PUBLISHED'`;
+    // Apply same filters to count query
+    if (validatedParams.category || validatedParams.search || validatedParams.featured !== undefined || validatedParams.authorId || validatedParams.status) {
+      countSql += ` JOIN User u ON bp.authorId = u.id JOIN Category c ON bp.categoryId = c.id WHERE 1=1`;
+      
+      // Add status filter to count
+      if (validatedParams.status) {
+        countSql += ` AND bp.status = ?`;
+        countArgs.push(validatedParams.status);
+      } else {
+        countSql += ` AND bp.status = 'PUBLISHED'`;
+      }
       
       if (validatedParams.search) {
         countSql += ` AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)`;
@@ -173,13 +204,15 @@ async function handleTursoQuery(validatedParams: any) {
     }
 
     const countResult = await turso.execute({ sql: countSql, args: countArgs });
-    const totalCount = countResult.rows[0]?.total as number || 0;
+    const totalCount = Number(countResult.rows[0]?.total) || 0;
+
+    console.log('🔍 Total Count:', totalCount);
 
     // Calculate pagination info
     const totalPages = Math.ceil(totalCount / validatedParams.limit);
 
     return NextResponse.json({
-      posts: finalPosts,
+      posts: transformedPosts,
       pagination: {
         page: validatedParams.page,
         limit: validatedParams.limit,
@@ -189,7 +222,7 @@ async function handleTursoQuery(validatedParams: any) {
     });
 
   } catch (error) {
-    console.error('Error with Turso query:', error);
+    console.error('❌ Error with Turso query:', error);
     
     // Fallback to sample data if Turso fails
     return NextResponse.json({
