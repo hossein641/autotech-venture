@@ -1,4 +1,4 @@
-// components/blog/BlogFilters.tsx - Updated for API integration
+// components/blog/BlogFilters.tsx - Fixed for your exact use case
 import { Filter, X } from 'lucide-react';
 
 interface Category {
@@ -13,24 +13,27 @@ interface BlogFiltersProps {
   onCategoryChange: (category: string) => void;
 }
 
-export default function BlogFilters({ 
-  categories, 
-  selectedCategory, 
-  onCategoryChange 
+export default function BlogFilters({
+  categories,
+  selectedCategory,
+  onCategoryChange
 }: BlogFiltersProps) {
-  
+
   const handleCategoryClick = (categorySlug: string) => {
     // Toggle category: if already selected, clear it; otherwise select it
     if (selectedCategory === categorySlug) {
-      onCategoryChange('');
+      onCategoryChange('');  // ✅ Use empty string as you're doing
     } else {
       onCategoryChange(categorySlug);
     }
   };
 
   const clearFilters = () => {
-    onCategoryChange('');
+    onCategoryChange('');  // ✅ Use empty string as you're doing
   };
+
+  // ✅ Add null safety checks
+  const safeCategories = categories || [];
 
   return (
     <div className="bg-white rounded-xl p-6 shadow-lg">
@@ -52,12 +55,12 @@ export default function BlogFilters({
       </div>
       
       <div className="space-y-2">
-        {categories.length === 0 ? (
+        {safeCategories.length === 0 ? (
           <div className="text-gray-500 text-sm py-4">
             Loading categories...
           </div>
         ) : (
-          categories.map((category) => (
+          safeCategories.map((category) => (
             <button
               key={category.slug}
               onClick={() => handleCategoryClick(category.slug)}
@@ -87,7 +90,7 @@ export default function BlogFilters({
             <span className="font-medium">Active filter:</span>
             <div className="mt-2">
               <span className="inline-flex items-center bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full text-sm">
-                {categories.find(cat => cat.slug === selectedCategory)?.name}
+                {safeCategories.find(cat => cat.slug === selectedCategory)?.name || selectedCategory}
                 <button
                   onClick={clearFilters}
                   className="ml-2 hover:text-indigo-600"

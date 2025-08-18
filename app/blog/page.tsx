@@ -55,63 +55,88 @@ export default function BlogPage() {
   const [categories, setCategories] = useState<Category[]>([]);
 
   // Fetch blog posts from API
+  // Update your blog page's fetchPosts function with better error handling
+
   const fetchPosts = async (page = 1, category = '', search = '') => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
+      
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '9', // Show 9 posts per page + 1 featured
+        limit: '9',
       });
       
-      if (category) params.append('category', category);
-      if (search) params.append('search', search);
+      if (category && category !== '') params.append('category', category);
+      if (search && search !== '') params.append('search', search);
+
+      console.log('Fetching:', `/api/blog?${params.toString()}`); // Debug log
 
       const response = await fetch(`/api/blog?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch posts');
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+      }
 
       const data: BlogResponse = await response.json();
+      
+      // Add safety checks
+      if (!data || !Array.isArray(data.posts)) {
+        throw new Error('Invalid API response format');
+      }
       
       // Separate featured and regular posts
       const featured = data.posts.find(post => post.featured);
       const regular = data.posts.filter(post => !post.featured);
       
-      setFeaturedPost(featured || data.posts[0]); // Fallback to first post if no featured
-      setPosts(regular);
-      setTotalPages(data.pagination.totalPages);
-      setCurrentPage(data.pagination.page);
+      setFeaturedPost(featured || data.posts[0] || null);
+      setPosts(regular || []);
+      setTotalPages(data.pagination?.totalPages || 1);
+      setCurrentPage(data.pagination?.page || 1);
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load posts');
+      console.error('Fetch posts error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load blog posts');
+      
+      // Set fallback data
+      setPosts([]);
+      setFeaturedPost(null);
+      setCategories([
+        { name: 'AI Solutions', count: 0, slug: 'ai-solutions' },
+        { name: 'Process Automation', count: 0, slug: 'process-automation' },
+        { name: 'Web Development', count: 0, slug: 'web-development' }
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
   // Fetch categories for filters
+  // Also update your categories fetch with better error handling
   const fetchCategories = async () => {
     try {
-      // We'll get categories from the posts for now
-      // In the future, you can create a separate /api/categories endpoint
-      const response = await fetch('/api/blog?limit=100');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-
-      const data: BlogResponse = await response.json();
+      const response = await fetch('/api/blog/categories');
       
-      // Extract unique categories with counts
-      const categoryMap = new Map<string, number>();
-      data.posts.forEach(post => {
-        const current = categoryMap.get(post.category) || 0;
-        categoryMap.set(post.category, current + 1);
-      });
-
-      const categoryList: Category[] = Array.from(categoryMap.entries()).map(([name, count]) => ({
-        name,
-        count,
-        slug: name.toLowerCase().replace(/\s+/g, '-'),
-      }));
-
-      setCategories(categoryList);
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } else {
+        // Use fallback categories if API fails
+        setCategories([
+          { name: 'AI Solutions', count: 0, slug: 'ai-solutions' },
+          { name: 'Process Automation', count: 0, slug: 'process-automation' },
+          { name: 'Web Development', count: 0, slug: 'web-development' },
+          { name: 'Digital Transformation', count: 0, slug: 'digital-transformation' }
+        ]);
+      }
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
+      console.error('Categories fetch error:', err);
+      // Use fallback categories
+      setCategories([
+        { name: 'AI Solutions', count: 0, slug: 'ai-solutions' },
+        { name: 'Process Automation', count: 0, slug: 'process-automation' },
+        { name: 'Web Development', count: 0, slug: 'web-development' }
+      ]);
     }
   };
 
@@ -209,8 +234,46 @@ export default function BlogPage() {
             {/* Sidebar */}
             <aside className="lg:col-span-1">
               <div className="sticky top-8">
+                // Temporary debug version of your blog page
+                // Add this right before your BlogFilters component in the JSX
+
+                {/* DEBUG INFO - Remove after fixing */}
+                {process.env.NODE_ENV === 'production' && (
+                  <div style={{ 
+                    position: 'fixed', 
+                    top: 0, 
+                    right: 0, 
+                    background: 'black', 
+                    color: 'white', 
+                    padding: '10px', 
+                    fontSize: '12px',
+                    zIndex: 9999,
+                    maxWidth: '300px'
+                  }}>
+                    <div>Debug Info:</div>
+                    <div>Categories: {categories ? categories.length : 'null'}</div>
+                    <div>Selected: '{selectedCategory}'</div>
+                    <div>Posts: {posts ? posts.length : 'null'}</div>
+                    <div>Featured: {featuredPost ? 'exists' : 'null'}</div>
+                    <div>Loading: {loading ? 'true' : 'false'}</div>
+                    <div>Error: {error || 'none'}</div>
+                    <div>API Test: 
+                      <button 
+                        onClick={() => {
+                          fetch('/api/blog')
+                            .then(r => r.json())
+                            .then(d => console.log('API Response:', d))
+                            .catch(e => console.error('API Error:', e));
+                        }}
+                        style={{ marginLeft: '5px', fontSize: '10px' }}
+                      >
+                        Test
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <BlogFilters 
-                  categories={categories}
+                  categories={categories || []}
                   selectedCategory={selectedCategory}
                   onCategoryChange={setSelectedCategory}
                 />

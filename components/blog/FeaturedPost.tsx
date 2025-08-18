@@ -1,14 +1,26 @@
-// components/blog/FeaturedPost.tsx
+// components/blog/FeaturedPost.tsx - Add null safety at the top
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
 import { BlogPostData } from './BlogCard';
 
 interface FeaturedPostProps {
-  post: BlogPostData;
+  post: BlogPostData | null; // ✅ Allow null
 }
 
 export default function FeaturedPost({ post }: FeaturedPostProps) {
+  // ✅ Add early return for null post
+  if (!post) {
+    return (
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden p-8 text-center">
+        <div className="text-gray-500">
+          <div className="w-16 h-16 bg-gray-200 rounded-full mx-auto mb-4"></div>
+          <p>No featured post available</p>
+        </div>
+      </div>
+    );
+  }
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -22,7 +34,7 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
       <div className="grid lg:grid-cols-2 gap-0">
         <div className="relative h-64 lg:h-auto">
           <Image
-            src={post.featuredImage}
+            src={post.featuredImage || '/images/placeholder-blog.jpg'} // ✅ Add fallback
             alt={post.title}
             fill
             className="object-cover"
@@ -53,15 +65,15 @@ export default function FeaturedPost({ post }: FeaturedPostProps) {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <Image
-                src={post.author.avatar}
-                alt={post.author.name}
+                src={post.author?.avatar || '/images/placeholder-avatar.jpg'} // ✅ Add fallback
+                alt={post.author?.name || 'Author'}
                 width={48}
                 height={48}
                 className="rounded-full mr-4"
               />
               <div>
-                <p className="font-semibold text-gray-900">{post.author.name}</p>
-                <p className="text-sm text-gray-500">{post.author.title}</p>
+                <p className="font-semibold text-gray-900">{post.author?.name || 'Anonymous'}</p>
+                <p className="text-sm text-gray-500">{post.author?.title || 'Author'}</p>
               </div>
             </div>
             
