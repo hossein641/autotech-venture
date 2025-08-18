@@ -1,13 +1,15 @@
-// app/blog/page.tsx - Minimal version to isolate the issue
+// app/blog/page.tsx - Test BlogCard component
 'use client';
 
 import { useState, useEffect } from 'react';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
-// import BlogCard from '@/components/blog/BlogCard';           // ← Comment out temporarily
-// import BlogFilters from '@/components/blog/BlogFilters';     // ← Comment out temporarily  
-// import FeaturedPost from '@/components/blog/FeaturedPost';   // ← Comment out temporarily
+import BlogCard from '@/components/blog/BlogCard';                    // ← ADD THIS BACK
+// import BlogFilters from '@/components/blog/BlogFilters';           // ← Keep commented
+// import FeaturedPost from '@/components/blog/FeaturedPost';         // ← Keep commented
 import { BookOpen, TrendingUp, Users, Calendar, Search, ArrowRight, Loader2 } from 'lucide-react';
+
+// ... keep all your interfaces and component logic exactly the same ...
 
 interface BlogPostData {
   id: string;
@@ -125,10 +127,12 @@ export default function BlogPage() {
         </div>
       </section>
 
-      {/* Simple Content Section */}
+      {/* Test BlogCard Component */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-gray-900 mb-8">Testing BlogCard Component</h2>
+            
             {loading && (
               <div className="flex justify-center items-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
@@ -142,31 +146,23 @@ export default function BlogPage() {
               </div>
             )}
 
-            {!loading && !error && (
+            {!loading && !error && posts.length > 0 && (
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-8">Blog Posts Loaded</h2>
-                <p className="text-lg text-gray-600 mb-4">
-                  Found {posts.length} posts and {categories.length} categories
+                <p className="text-lg text-gray-600 mb-8">
+                  Testing BlogCard with {posts.length} posts
                 </p>
                 
-                {/* Simple list of post titles */}
-                <div className="max-w-2xl mx-auto text-left">
-                  <h3 className="text-xl font-semibold mb-4">Posts:</h3>
+                {/* TEST: BlogCard Components */}
+                <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
                   {posts.map((post) => (
-                    <div key={post.id} className="mb-2 p-4 bg-gray-50 rounded">
-                      <h4 className="font-medium">{post.title}</h4>
-                      <p className="text-sm text-gray-600">{post.excerpt}</p>
-                    </div>
-                  ))}
-                  
-                  <h3 className="text-xl font-semibold mt-8 mb-4">Categories:</h3>
-                  {categories.map((cat) => (
-                    <div key={cat.slug} className="mb-2 p-2 bg-blue-50 rounded">
-                      {cat.name} ({cat.count})
-                    </div>
+                    <BlogCard key={post.id} post={post} />
                   ))}
                 </div>
               </div>
+            )}
+
+            {!loading && !error && posts.length === 0 && (
+              <p className="text-gray-600">No posts found</p>
             )}
           </div>
         </div>
