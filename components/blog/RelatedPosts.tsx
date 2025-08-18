@@ -1,13 +1,17 @@
-// components/blog/RelatedPosts.tsx - Updated with API integration
+// components/blog/RelatedPosts.tsx - Production version with API integration
 'use client';
 
 import { useState, useEffect } from 'react';
 import { BlogPostData } from './BlogCard';
 import BlogCard from './BlogCard';
+import { ArrowRight, BookOpen } from 'lucide-react';
 
 interface RelatedPostsProps {
   currentPostId: string;
-  category: string;
+  category?: string;
+  tags?: string[];
+  maxPosts?: number;
+  className?: string;
 }
 
 interface BlogResponse {
@@ -20,48 +24,72 @@ interface BlogResponse {
   };
 }
 
-export default function RelatedPosts({ currentPostId, category }: RelatedPostsProps) {
+export default function RelatedPosts({ 
+  currentPostId, 
+  category, 
+  tags = [], 
+  maxPosts = 3,
+  className = ''
+}: RelatedPostsProps) {
   const [relatedPosts, setRelatedPosts] = useState<BlogPostData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRelatedPosts = async () => {
       try {
         setLoading(true);
+        setError(null);
         
-        // First, try to find posts in the same category
-        const categorySlug = category.toLowerCase().replace(/\s+/g, '-');
-        const response = await fetch(`/api/blog?category=${categorySlug}&limit=6`);
+        let posts: BlogPostData[] = [];
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch related posts');
+        // Strategy 1: Try to find posts in the same category
+        if (category) {
+          const categorySlug = category.toLowerCase().replace(/\s+/g, '-');
+          const categoryResponse = await fetch(`/api/blog?category=${categorySlug}&limit=${maxPosts + 2}`);
+          
+          if (categoryResponse.ok) {
+            const categoryData: BlogResponse = await categoryResponse.json();
+            posts = categoryData.posts.filter(post => post.id !== currentPostId);
+          }
         }
-
-        const data: BlogResponse = await response.json();
         
-        // Filter out the current post and limit to 3 posts
-        const filtered = data.posts
-          .filter(post => post.id !== currentPostId)
-          .slice(0, 3);
-        
-        // If we don't have enough posts in the same category, fetch recent posts
-        if (filtered.length < 3) {
-          const recentResponse = await fetch('/api/blog?limit=6&sortBy=publishedAt&sortOrder=desc');
+        // Strategy 2: If we don't have enough posts, get recent posts
+        if (posts.length < maxPosts) {
+          const recentResponse = await fetch(`/api/blog?limit=${maxPosts + 2}&sortBy=publishedAt&sortOrder=desc`);
+          
           if (recentResponse.ok) {
             const recentData: BlogResponse = await recentResponse.json();
-            const recentFiltered = recentData.posts
-              .filter(post => post.id !== currentPostId)
-              .slice(0, 3 - filtered.length);
+            const recentPosts = recentData.posts.filter(post => 
+              post.id !== currentPostId && 
+              !posts.some(existingPost => existingPost.id === post.id)
+            );
             
-            setRelatedPosts([...filtered, ...recentFiltered]);
-          } else {
-            setRelatedPosts(filtered);
+            posts = [...posts, ...recentPosts];
           }
-        } else {
-          setRelatedPosts(filtered);
         }
-      } catch (error) {
-        console.error('Error fetching related posts:', error);
+        
+        // Strategy 3: If still not enough, get featured posts
+        if (posts.length < maxPosts) {
+          const featuredResponse = await fetch(`/api/blog?featured=true&limit=${maxPosts + 2}`);
+          
+          if (featuredResponse.ok) {
+            const featuredData: BlogResponse = await featuredResponse.json();
+            const featuredPosts = featuredData.posts.filter(post => 
+              post.id !== currentPostId && 
+              !posts.some(existingPost => existingPost.id === post.id)
+            );
+            
+            posts = [...posts, ...featuredPosts];
+          }
+        }
+        
+        // Limit to maxPosts and set the results
+        setRelatedPosts(posts.slice(0, maxPosts));
+        
+      } catch (err) {
+        console.error('Error fetching related posts:', err);
+        setError('Failed to load related posts');
         setRelatedPosts([]);
       } finally {
         setLoading(false);
@@ -69,85 +97,102 @@ export default function RelatedPosts({ currentPostId, category }: RelatedPostsPr
     };
 
     fetchRelatedPosts();
-  }, [currentPostId, category]);
+  }, [currentPostId, category, maxPosts]);
 
-  // Don't render if no related posts or still loading
-  if (loading) {
-    return (
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              Related Articles
-            </h2>
-            <p className="text-lg text-gray-600">
-              Loading more insights...
-            </p>
-          </div>
-          
+  // Don't render if no related posts found and not loading
+  if (!loading && relatedPosts.length === 0 && !error) {
+    return null;
+  }
+
+  return (
+    <section className={`py-16 bg-gray-50 ${className}`}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Section Header */}
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">
+            Related Articles
+          </h2>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Discover more insights and expert guidance from our team
+          </p>
+        </div>
+
+        {/* Loading State */}
+        {loading && (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Loading skeletons */}
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
+            {Array.from({ length: maxPosts }).map((_, index) => (
+              <div key={index} className="bg-white rounded-xl shadow-lg overflow-hidden animate-pulse">
                 <div className="h-48 bg-gray-300"></div>
                 <div className="p-6">
                   <div className="h-4 bg-gray-300 rounded mb-3"></div>
                   <div className="h-6 bg-gray-300 rounded mb-3"></div>
                   <div className="h-4 bg-gray-300 rounded mb-4"></div>
-                  <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                  <div className="flex items-center">
+                    <div className="w-8 h-8 bg-gray-300 rounded-full mr-3"></div>
+                    <div className="flex-1">
+                      <div className="h-3 bg-gray-300 rounded mb-1"></div>
+                      <div className="h-3 bg-gray-300 rounded w-2/3"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      </section>
-    );
-  }
+        )}
 
-  if (relatedPosts.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Related Articles
-          </h2>
-          <p className="text-lg text-gray-600">
-            More insights on {category.toLowerCase()} and technology trends
-          </p>
-        </div>
-        
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {relatedPosts.map((post) => (
-            <BlogCard key={post.id} post={post} />
-          ))}
-        </div>
-
-        {/* View More Button */}
-        <div className="text-center mt-12">
-          <a
-            href="/blog"
-            className="inline-flex items-center bg-indigo-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors"
-          >
-            View All Articles
-            <svg 
-              className="w-5 h-5 ml-2" 
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
+        {/* Error State */}
+        {error && !loading && (
+          <div className="text-center py-12">
+            <div className="text-red-600 mb-4">⚠️ {error}</div>
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors"
             >
-              <path 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                strokeWidth={2} 
-                d="M17 8l4 4m0 0l-4 4m4-4H3" 
-              />
-            </svg>
-          </a>
-        </div>
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {/* Related Posts Grid */}
+        {!loading && relatedPosts.length > 0 && (
+          <>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+              {relatedPosts.map((post) => (
+                <BlogCard key={post.id} post={post} />
+              ))}
+            </div>
+
+            {/* View All Link */}
+            <div className="text-center">
+              <a
+                href="/blog"
+                className="inline-flex items-center bg-indigo-600 text-white px-8 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-md hover:shadow-lg"
+              >
+                <BookOpen className="w-5 h-5 mr-2" />
+                View All Articles
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </a>
+            </div>
+          </>
+        )}
+
+        {/* Empty State */}
+        {!loading && relatedPosts.length === 0 && !error && (
+          <div className="text-center py-12">
+            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Related Articles</h3>
+            <p className="text-gray-600 mb-6">
+              Check out our latest insights and expert guidance
+            </p>
+            <a
+              href="/blog"
+              className="inline-flex items-center bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+            >
+              Browse All Articles
+              <ArrowRight className="w-5 h-5 ml-2" />
+            </a>
+          </div>
+        )}
       </div>
     </section>
   );
