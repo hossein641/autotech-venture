@@ -1,10 +1,11 @@
-// app/api/blog/route.ts - Updated with Production Turso Support
+// app/api/blog/route.ts - Updated with Unified Database Module
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getUserFromRequest } from '@/lib/auth';
 import { blogFiltersSchema, blogPostSchema } from '@/lib/validation';
 import { transformPostFromDB, keywordsToString, calculateReadTime, generateSlug } from '@/lib/types';
+import { getBlogPosts, createBlogPost } from '@/lib/database';
 
 // GET /api/blog - Fetch blog posts with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -24,207 +25,51 @@ export async function GET(request: NextRequest) {
 
     const validatedParams = blogFiltersSchema.parse(parsedParams);
 
-    // Check if we're in production and should use Turso
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-    
-    if (isProduction) {
-      // Use Turso directly in production
-      return await handleTursoQuery(validatedParams);
-    } else {
-      // Use existing Prisma logic for local development
-      return await handlePrismaQuery(validatedParams);
-    }
-
-  } catch (error) {
-    console.error('Error fetching blog posts:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch blog posts' },
-      { status: 500 }
-    );
-  }
-}
-
-// Production: Turso database query
-// app/api/blog/route.ts - FIXED VERSION
-// Replace your handleTursoQuery function with this corrected version
-
-// Production: Turso database query - FIXED
-async function handleTursoQuery(validatedParams: any) {
-  try {
-    // Import Turso client
-    const { turso } = await import('@/lib/turso');
-    
-    // Build SQL query with filters - Include all required fields
-    let sql = `
-      SELECT 
-        bp.id, bp.slug, bp.title, bp.excerpt, bp.content, bp.featuredImage,
-        bp.publishedAt, bp.createdAt, bp.updatedAt, bp.readTime, bp.featured, 
-        bp.metaTitle, bp.metaDescription, bp.keywords, bp.status,
-        u.name as authorName, u.avatar as authorAvatar, u.title as authorTitle,
-        c.name as categoryName, c.slug as categorySlug, c.color as categoryColor
-      FROM BlogPost bp
-      JOIN User u ON bp.authorId = u.id
-      JOIN Category c ON bp.categoryId = c.id
-      WHERE 1=1
-    `;
-
-    const args: any[] = [];
-    
-    // CRITICAL FIX: Add status filtering based on query parameter
-    if (validatedParams.status) {
-      sql += ` AND bp.status = ?`;
-      args.push(validatedParams.status);
-    } else {
-      // Default: only show PUBLISHED posts for public API
-      sql += ` AND bp.status = 'PUBLISHED'`;
-    }
-    
-    // Add search filter
-    if (validatedParams.search) {
-      sql += ` AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)`;
-      const searchTerm = `%${validatedParams.search}%`;
-      args.push(searchTerm, searchTerm, searchTerm);
-    }
-
-    // Add category filter
-    if (validatedParams.category) {
-      sql += ` AND c.slug = ?`;
-      args.push(validatedParams.category);
-    }
-
-    // Add featured filter
-    if (validatedParams.featured !== undefined) {
-      sql += ` AND bp.featured = ?`;
-      args.push(validatedParams.featured ? 1 : 0);
-    }
-
-    // Add author filter
-    if (validatedParams.authorId) {
-      sql += ` AND bp.authorId = ?`;
-      args.push(validatedParams.authorId);
-    }
-
-    // Add ordering
-    if (validatedParams.sortBy === 'publishedAt') {
-      sql += ` ORDER BY bp.publishedAt ${validatedParams.sortOrder || 'DESC'}`;
-    } else if (validatedParams.sortBy === 'createdAt') {
-      sql += ` ORDER BY bp.createdAt ${validatedParams.sortOrder || 'DESC'}`;
-    } else if (validatedParams.sortBy === 'updatedAt') {
-      sql += ` ORDER BY bp.updatedAt ${validatedParams.sortOrder || 'DESC'}`;
-    } else {
-      sql += ` ORDER BY bp.publishedAt DESC`;
-    }
-
-    // Add pagination
-    sql += ` LIMIT ? OFFSET ?`;
-    args.push(validatedParams.limit, (validatedParams.page - 1) * validatedParams.limit);
-
-    console.log('🔍 Turso SQL Query:', sql);
-    console.log('🔍 Query Args:', args);
-
-    const result = await turso.execute({ sql, args });
-
-    console.log('🔍 Turso Result Count:', result.rows.length);
-
-    // CRITICAL FIX: Transform Turso results with proper status field
-    const transformedPosts = result.rows.map(row => {
-      const post = {
-        id: String(row.id),
-        slug: String(row.slug),
-        title: String(row.title),
-        excerpt: String(row.excerpt),
-        content: String(row.content),
-        featuredImage: row.featuredImage ? String(row.featuredImage) : null,
-        publishedAt: row.publishedAt ? String(row.publishedAt) : null,
-        updatedAt: row.updatedAt ? String(row.updatedAt) : null,
-        readTime: Number(row.readTime) || 5,
-        featured: Boolean(row.featured),
-        status: String(row.status), // FIXED: Ensure status is included as string
-        author: {
-          name: String(row.authorName),
-          avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
-          title: row.authorTitle ? String(row.authorTitle) : null
-        },
-        category: String(row.categoryName),
-        tags: [], // Simplified for now
-        seo: {
-          metaTitle: row.metaTitle ? String(row.metaTitle) : null,
-          metaDescription: row.metaDescription ? String(row.metaDescription) : null,
-          keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
-        }
-      };
-
-      console.log('🔍 Transformed Post:', { 
-        title: post.title, 
-        status: post.status, 
-        featured: post.featured 
-      });
-
-      return post;
+    console.log('🔍 Blog API GET Request:', { 
+      validatedParams,
+      timestamp: new Date().toISOString(),
+      url: request.url
     });
 
-    // Get total count for pagination with same filters
-    let countSql = `SELECT COUNT(*) as total FROM BlogPost bp`;
-    const countArgs: any[] = [];
-    
-    // Apply same filters to count query
-    if (validatedParams.category || validatedParams.search || validatedParams.featured !== undefined || validatedParams.authorId || validatedParams.status) {
-      countSql += ` JOIN User u ON bp.authorId = u.id JOIN Category c ON bp.categoryId = c.id WHERE 1=1`;
-      
-      // Add status filter to count
-      if (validatedParams.status) {
-        countSql += ` AND bp.status = ?`;
-        countArgs.push(validatedParams.status);
-      } else {
-        countSql += ` AND bp.status = 'PUBLISHED'`;
+    // Use unified database module
+    const result = await getBlogPosts(
+      {
+        search: validatedParams.search,
+        category: validatedParams.category,
+        featured: validatedParams.featured,
+        authorId: validatedParams.authorId,
+        status: validatedParams.status
+      },
+      {
+        page: validatedParams.page,
+        limit: validatedParams.limit,
+        sortBy: validatedParams.sortBy,
+        sortOrder: validatedParams.sortOrder
       }
-      
-      if (validatedParams.search) {
-        countSql += ` AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)`;
-        const searchTerm = `%${validatedParams.search}%`;
-        countArgs.push(searchTerm, searchTerm, searchTerm);
-      }
-      
-      if (validatedParams.category) {
-        countSql += ` AND c.slug = ?`;
-        countArgs.push(validatedParams.category);
-      }
-      
-      if (validatedParams.featured !== undefined) {
-        countSql += ` AND bp.featured = ?`;
-        countArgs.push(validatedParams.featured ? 1 : 0);
-      }
-      
-      if (validatedParams.authorId) {
-        countSql += ` AND bp.authorId = ?`;
-        countArgs.push(validatedParams.authorId);
-      }
-    } else {
-      countSql += ` WHERE bp.status = 'PUBLISHED'`;
-    }
+    );
 
-    const countResult = await turso.execute({ sql: countSql, args: countArgs });
-    const totalCount = Number(countResult.rows[0]?.total) || 0;
-
-    console.log('🔍 Total Count:', totalCount);
+    console.log('🔍 Blog API GET Response:', { 
+      postCount: result.posts.length,
+      totalCount: result.totalCount 
+    });
 
     // Calculate pagination info
-    const totalPages = Math.ceil(totalCount / validatedParams.limit);
+    const totalPages = Math.ceil(result.totalCount / validatedParams.limit);
 
     return NextResponse.json({
-      posts: transformedPosts,
+      posts: result.posts,
       pagination: {
         page: validatedParams.page,
         limit: validatedParams.limit,
-        total: totalCount,
+        total: result.totalCount,
         totalPages,
       },
     });
 
   } catch (error) {
-    console.error('❌ Error with Turso query:', error);
+    console.error('❌ Blog API GET Error:', error);
     
-    // Fallback to sample data if Turso fails
+    // Fallback to sample data if database fails
     return NextResponse.json({
       posts: getSamplePosts(),
       pagination: {
@@ -237,111 +82,97 @@ async function handleTursoQuery(validatedParams: any) {
   }
 }
 
-// Local Development: Existing Prisma logic
-async function handlePrismaQuery(validatedParams: any) {
-  // Build Prisma where clause
-  const where: any = {};
+// POST /api/blog - Create new blog post
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getUserFromRequest(request);
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  // Only show published posts for public API (unless status filter is specifically set)
-  if (!validatedParams.status) {
-    where.status = 'PUBLISHED';
-  } else {
-    where.status = validatedParams.status;
-  }
+    const body = await request.json();
+    const validatedData = blogPostSchema.parse(body);
 
-  // Search functionality
-  if (validatedParams.search) {
-    where.OR = [
-      { title: { contains: validatedParams.search } },
-      { excerpt: { contains: validatedParams.search } },
-      { content: { contains: validatedParams.search } },
-    ];
-  }
+    console.log('🔍 Blog API POST Request (Create Post):', { 
+      title: validatedData.title,
+      status: validatedData.status,
+      timestamp: new Date().toISOString()
+    });
 
-  // Category filter
-  if (validatedParams.category) {
-    where.category = {
-      slug: validatedParams.category
+    // Generate slug from title
+    const slug = generateSlug(validatedData.title);
+
+    // Check if slug already exists - use unified database
+    const USE_TURSO = process.env.DATABASE_URL?.startsWith('libsql://') || 
+                      process.env.NODE_ENV === 'production';
+
+    let existingPost;
+    if (USE_TURSO) {
+      const { turso } = await import('@/lib/turso');
+      const result = await turso.execute({
+        sql: 'SELECT id FROM BlogPost WHERE slug = ? LIMIT 1',
+        args: [slug]
+      });
+      existingPost = result.rows.length > 0 ? { id: result.rows[0].id } : null;
+    } else {
+      existingPost = await prisma.blogPost.findUnique({
+        where: { slug },
+        select: { id: true }
+      });
+    }
+
+    if (existingPost) {
+      return NextResponse.json(
+        { error: 'A post with this title already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Calculate read time
+    const readTime = calculateReadTime(validatedData.content);
+
+    // Prepare post data
+    const postData = {
+      title: validatedData.title,
+      slug,
+      excerpt: validatedData.excerpt,
+      content: validatedData.content,
+      featuredImage: validatedData.featuredImage || null,
+      authorId: user.id,
+      categoryId: validatedData.categoryId,
+      featured: validatedData.featured || false,
+      status: validatedData.status || 'DRAFT',
+      publishedAt: validatedData.status === 'PUBLISHED' 
+        ? validatedData.publishedAt ? new Date(validatedData.publishedAt).toISOString() : new Date().toISOString()
+        : null,
+      readTime,
+      metaTitle: validatedData.metaTitle || null,
+      metaDescription: validatedData.metaDescription || null,
+      keywords: validatedData.keywords || [],
+      tagIds: validatedData.tagIds
     };
+
+    // Use unified database module for creation
+    const result = await createBlogPost(postData);
+
+    console.log('🔍 Blog API POST Response:', { 
+      success: true,
+      postId: result.id,
+      title: result.title
+    });
+
+    return NextResponse.json({ 
+      post: result,
+      message: 'Blog post created successfully'
+    }, { status: 201 });
+
+  } catch (error) {
+    console.error('❌ Blog API POST Error:', error);
+    return NextResponse.json(
+      { error: 'Failed to create blog post', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
-
-  // Tag filter
-  if (validatedParams.tag) {
-    where.tags = {
-      some: {
-        tag: {
-          slug: validatedParams.tag
-        }
-      }
-    };
-  }
-
-  // Featured filter
-  if (validatedParams.featured !== undefined) {
-    where.featured = validatedParams.featured;
-  }
-
-  // Author filter
-  if (validatedParams.authorId) {
-    where.authorId = validatedParams.authorId;
-  }
-
-  // Calculate pagination
-  const skip = (validatedParams.page - 1) * validatedParams.limit;
-
-  // Build order by clause
-  const orderBy: any = {};
-  if (validatedParams.sortBy === 'publishedAt') {
-    orderBy.publishedAt = validatedParams.sortOrder;
-  } else if (validatedParams.sortBy === 'createdAt') {
-    orderBy.createdAt = validatedParams.sortOrder;
-  } else if (validatedParams.sortBy === 'updatedAt') {
-    orderBy.updatedAt = validatedParams.sortOrder;
-  } else {
-    orderBy.title = validatedParams.sortOrder;
-  }
-
-  // Fetch posts with relations
-  const [posts, totalCount] = await Promise.all([
-    prisma.blogPost.findMany({
-      where,
-      include: {
-        author: {
-          select: { name: true, avatar: true, title: true }
-        },
-        category: {
-          select: { name: true, slug: true, color: true }
-        },
-        tags: {
-          include: {
-            tag: {
-              select: { name: true, slug: true }
-            }
-          }
-        }
-      },
-      orderBy,
-      skip,
-      take: validatedParams.limit,
-    }),
-    prisma.blogPost.count({ where })
-  ]);
-
-  // Transform posts to frontend format
-  const transformedPosts = posts.map(transformPostFromDB);
-
-  // Calculate pagination info
-  const totalPages = Math.ceil(totalCount / validatedParams.limit);
-
-  return NextResponse.json({
-    posts: transformedPosts,
-    pagination: {
-      page: validatedParams.page,
-      limit: validatedParams.limit,
-      total: totalCount,
-      totalPages,
-    },
-  });
 }
 
 // Sample posts fallback (for demo purposes)
@@ -430,87 +261,4 @@ function getSamplePosts() {
       }
     }
   ];
-}
-
-// POST /api/blog - Create new blog post (keep your existing logic)
-export async function POST(request: NextRequest) {
-  try {
-    const user = await getUserFromRequest(request);
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const validatedData = blogPostSchema.parse(body);
-
-    // Generate slug from title
-    const slug = generateSlug(validatedData.title);
-
-    // Check if slug already exists
-    const existingPost = await prisma.blogPost.findUnique({
-      where: { slug }
-    });
-
-    if (existingPost) {
-      return NextResponse.json(
-        { error: 'A post with this title already exists' },
-        { status: 400 }
-      );
-    }
-
-    // Calculate read time
-    const readTime = calculateReadTime(validatedData.content);
-
-    // Create the post
-    const post = await prisma.blogPost.create({
-      data: {
-        title: validatedData.title,
-        slug,
-        excerpt: validatedData.excerpt,
-        content: validatedData.content,
-        featuredImage: validatedData.featuredImage || null,
-        authorId: user.id,
-        categoryId: validatedData.categoryId,
-        featured: validatedData.featured || false,
-        status: validatedData.status || 'DRAFT',
-        publishedAt: validatedData.status === 'PUBLISHED' 
-          ? validatedData.publishedAt ? new Date(validatedData.publishedAt) : new Date()
-          : null,
-        readTime,
-        metaTitle: validatedData.metaTitle || null,
-        metaDescription: validatedData.metaDescription || null,
-        keywords: keywordsToString(validatedData.keywords || []),
-        tags: validatedData.tagIds ? {
-          create: validatedData.tagIds.map(tagId => ({
-            tagId
-          }))
-        } : undefined
-      },
-      include: {
-        author: {
-          select: { name: true, avatar: true, title: true }
-        },
-        category: {
-          select: { name: true, slug: true, color: true }
-        },
-        tags: {
-          include: {
-            tag: {
-              select: { name: true, slug: true }
-            }
-          }
-        }
-      }
-    });
-
-    const transformedPost = transformPostFromDB(post);
-    return NextResponse.json({ post: transformedPost }, { status: 201 });
-
-  } catch (error) {
-    console.error('Error creating blog post:', error);
-    return NextResponse.json(
-      { error: 'Failed to create blog post' },
-      { status: 500 }
-    );
-  }
 }

@@ -1,7 +1,38 @@
-// app/api/blog/[slug]/route.ts - Updated with Production Support
+// app/api/blog/[slug]/route.ts - Updated with Unified Database Module
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { transformPostFromDB } from '@/lib/types';
+import { getBlogPostBySlug } from '@/lib/database';
+
+// Type definitions for better TypeScript support
+interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  content: string;
+  featuredImage: string | null;
+  author: {
+    name: string;
+    avatar: string;
+    title: string;
+  };
+  publishedAt: string;
+  readTime: number;
+  tags: string[];
+  category: string;
+  featured: boolean;
+  status?: string;
+  seo: {
+    metaTitle: string;
+    metaDescription: string;
+    keywords: string[];
+  };
+}
+
+interface ErrorResponse {
+  error: string;
+}
 
 export async function GET(
   request: NextRequest,
@@ -10,144 +41,50 @@ export async function GET(
   try {
     const { slug } = params;
 
-    // Check if we're in production and should use Turso
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-    
-    if (isProduction) {
-      // Use Turso directly in production
-      return await handleTursoSinglePost(slug);
-    } else {
-      // Use existing Prisma logic for local development
-      return await handlePrismaSinglePost(slug);
-    }
+    console.log('🔍 Individual Post API Request:', { 
+      slug,
+      timestamp: new Date().toISOString(),
+      url: request.url
+    });
 
-  } catch (error) {
-    console.error('Error fetching blog post:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch blog post' },
-      { status: 500 }
-    );
-  }
-}
+    // Use unified database module
+    const post = await getBlogPostBySlug(slug);
 
-// Production: Turso database query for single post
-async function handleTursoSinglePost(slug: string) {
-  try {
-    // Import Turso client
-    const { turso } = await import('@/lib/turso');
-    
-    const sql = `
-      SELECT 
-        bp.id, bp.slug, bp.title, bp.excerpt, bp.content, bp.featuredImage,
-        bp.publishedAt, bp.createdAt, bp.updatedAt, bp.readTime, bp.featured, 
-        bp.metaTitle, bp.metaDescription, bp.keywords, bp.status,
-        u.name as authorName, u.avatar as authorAvatar, u.title as authorTitle,
-        c.name as categoryName, c.slug as categorySlug, c.color as categoryColor
-      FROM BlogPost bp
-      JOIN User u ON bp.authorId = u.id
-      JOIN Category c ON bp.categoryId = c.id
-      WHERE (bp.slug = ? OR bp.id = ?) AND bp.status = 'PUBLISHED'
-    `;
-
-    const result = await turso.execute({ sql, args: [slug, slug] });
-
-    if (result.rows.length === 0) {
+    if (!post) {
+      console.log('❌ Post not found:', { slug });
       return NextResponse.json(
         { error: 'Post not found' },
         { status: 404 }
       );
     }
 
-    const row = result.rows[0];
-    
-    // Transform directly to BlogPostData format
-    const post = {
-      id: row.id as string,
-      slug: row.slug as string,
-      title: row.title as string,
-      excerpt: row.excerpt as string,
-      content: row.content as string,
-      featuredImage: row.featuredImage as string || null,
-      author: {
-        name: row.authorName as string,
-        avatar: row.authorAvatar as string || '/images/team/hossein.jpg',
-        title: row.authorTitle as string
-      },
-      publishedAt: row.publishedAt as string,
-      readTime: row.readTime as number || 5,
-      tags: row.keywords ? JSON.parse(row.keywords as string) : [],
-      category: row.categoryName as string,
-      featured: Boolean(row.featured),
-      seo: {
-        metaTitle: row.metaTitle as string,
-        metaDescription: row.metaDescription as string,
-        keywords: row.keywords ? JSON.parse(row.keywords as string) : []
-      }
-    };
+    console.log('✅ Individual Post API Response:', { 
+      title: post.title,
+      slug: post.slug,
+      status: post.status || 'PUBLISHED'
+    });
 
     return NextResponse.json(post);
 
   } catch (error) {
-    console.error('Error with Turso single post query:', error);
+    console.error('❌ Individual Post API Error:', error);
     
-    // Fallback to sample post if Turso fails
-    return NextResponse.json(getSamplePostBySlug(slug));
-  }
-}
-
-// Local Development: Existing Prisma logic
-async function handlePrismaSinglePost(slug: string) {
-  // Find post by slug or ID (for flexibility)
-  const post = await prisma.blogPost.findFirst({
-    where: {
-      OR: [
-        { slug: slug },
-        { id: slug }
-      ],
-      status: 'PUBLISHED' // Only show published posts
-    },
-    include: {
-      author: {
-        select: {
-          name: true,
-          avatar: true,
-          title: true
-        }
-      },
-      category: {
-        select: {
-          name: true,
-          slug: true,
-          color: true
-        }
-      },
-      tags: {
-        include: {
-          tag: {
-            select: {
-              name: true,
-              slug: true
-            }
-          }
-        }
-      }
+    // Fallback to sample post if database fails
+    const fallbackPost = getSamplePostBySlug(params.slug);
+    if (fallbackPost && !('error' in fallbackPost)) {
+      return NextResponse.json(fallbackPost);
     }
-  });
-
-  if (!post) {
+    
     return NextResponse.json(
-      { error: 'Post not found' },
-      { status: 404 }
+      { error: 'Failed to fetch post', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
     );
   }
-
-  const transformedPost = transformPostFromDB(post);
-  return NextResponse.json(transformedPost);
 }
 
 // Sample post fallback (for demo purposes)
-function getSamplePostBySlug(slug: string) {
-  const samplePosts = [
+function getSamplePostBySlug(slug: string): BlogPost | ErrorResponse {
+  const samplePosts: BlogPost[] = [
     {
       id: '1',
       slug: 'ai-automation-small-business-dayton',
