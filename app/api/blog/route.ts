@@ -108,16 +108,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Category name to ID mapping
+    // Category name to ID mapping (FIXED with correct IDs)
     const getCategoryId = (categoryName: string): string => {
       const categoryMap: Record<string, string> = {
-        "AI Solutions": "cat_ai_solutions_1755215496487",
-        "SEO Services": "cat_seo_services_1755215496488", 
-        "Web Development": "cat_web_development_1755215496489",
-        "Automation": "cat_automation_1755215496490"
+        "AI Solutions": "cat_ai",
+        "SEO Services": "cat_seo", 
+        "Web Development": "cat_web",
+        "Automation": "cat_auto"
       };
       
-      return categoryMap[categoryName] || "cat_ai_solutions_1755215496487";
+      return categoryMap[categoryName] || "cat_ai"; // Default to AI Solutions
     };
 
     // Process and fix the data before validation
