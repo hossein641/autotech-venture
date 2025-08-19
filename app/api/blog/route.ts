@@ -1,9 +1,7 @@
-// app/api/blog/route.ts - FIXED VERSION
+// app/api/blog/route.ts - COMPLETE UPDATED VERSION
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { getUserFromRequest } from '@/lib/auth';
 import { blogFiltersSchema, blogPostSchema } from '@/lib/validation';
-import { transformPostFromDB, keywordsToString, calculateReadTime, generateSlug } from '@/lib/types';
+import { generateSlug, calculateReadTime } from '@/lib/types';
 import { getBlogPosts, createBlogPost } from '@/lib/database';
 
 // GET /api/blog - Fetch blog posts with filtering and pagination
@@ -81,12 +79,55 @@ export async function POST(request: NextRequest) {
     console.log('📝 Request body received:', {
       title: body.title,
       status: body.status,
-      featured: body.featured,
+      category: body.category,
+      categoryId: body.categoryId,
+      authorId: body.authorId,
       hasContent: !!body.content
     });
 
-    // Validate blog post data
-    const validation = blogPostSchema.safeParse(body);
+    // Category name to ID mapping
+    const getCategoryId = (categoryName: string): string => {
+      const categoryMap: Record<string, string> = {
+        "AI Solutions": "cat_ai_solutions_1755215496487",
+        "SEO Services": "cat_seo_services_1755215496488", 
+        "Web Development": "cat_web_development_1755215496489",
+        "Automation": "cat_automation_1755215496490"
+      };
+      
+      return categoryMap[categoryName] || "cat_ai_solutions_1755215496487";
+    };
+
+    // Process and fix the data before validation
+    const processedBody = {
+      title: body.title,
+      excerpt: body.excerpt, 
+      content: body.content,
+      featuredImage: body.featuredImage,
+      featured: body.featured || false,
+      status: body.status || 'DRAFT',
+      metaTitle: body.metaTitle,
+      metaDescription: body.metaDescription,
+      keywords: body.keywords || [],
+      // FIX: Map category name to categoryId
+      categoryId: body.categoryId || getCategoryId(body.category || "AI Solutions"),
+      // FIX: Set default authorId
+      authorId: body.authorId || "user_hossein_1755215496484",
+      // Generate slug if not provided
+      slug: body.slug || generateSlug(body.title),
+      // Calculate readTime if not provided  
+      readTime: body.readTime || calculateReadTime(body.content)
+    };
+
+    console.log('🔧 Processed data:', {
+      title: processedBody.title,
+      categoryId: processedBody.categoryId,
+      authorId: processedBody.authorId,
+      slug: processedBody.slug,
+      status: processedBody.status
+    });
+
+    // Validate the processed data
+    const validation = blogPostSchema.safeParse(processedBody);
     if (!validation.success) {
       console.log('❌ Validation failed:', validation.error.format());
       return NextResponse.json(
@@ -98,30 +139,33 @@ export async function POST(request: NextRequest) {
     const validatedData = validation.data;
     console.log('✅ Data validated successfully');
 
-    // CRITICAL FIX: Ensure status is explicitly set
-    const postData = {
-      ...validatedData,
-      status: validatedData.status || 'DRAFT', // Default to DRAFT if not specified
-      featured: validatedData.featured || false,
-      slug: validatedData.slug || generateSlug(validatedData.title), // Generate slug if not provided
-      readTime: validatedData.readTime || calculateReadTime(validatedData.content) // Calculate if not provided
-    };
-
     // Set publishedAt if status is PUBLISHED and publishedAt is not set
-    if (postData.status === 'PUBLISHED' && !postData.publishedAt) {
-      postData.publishedAt = new Date().toISOString();
-      console.log(`📅 Set publishedAt: ${postData.publishedAt}`);
+    if (validatedData.status === 'PUBLISHED' && !validatedData.publishedAt) {
+      validatedData.publishedAt = new Date().toISOString();
+      console.log(`📅 Set publishedAt: ${validatedData.publishedAt}`);
     }
 
-    console.log('💾 Creating post with data:', {
-      title: postData.title,
-      status: postData.status,
-      slug: postData.slug,
-      featured: postData.featured
+    // Combine validated data with our processed fields
+    const finalPostData = {
+      ...validatedData,
+      authorId: processedBody.authorId,
+      categoryId: processedBody.categoryId,
+      slug: processedBody.slug,
+      readTime: processedBody.readTime
+    };
+
+    console.log('💾 Creating post with final data:', {
+      title: finalPostData.title,
+      status: finalPostData.status,
+      slug: finalPostData.slug,
+      featured: finalPostData.featured,
+      categoryId: finalPostData.categoryId,
+      authorId: finalPostData.authorId,
+      readTime: finalPostData.readTime
     });
 
     // Create blog post in database
-    const newPost = await createBlogPost(postData);
+    const newPost = await createBlogPost(finalPostData);
     
     console.log('✅ Post created successfully:', {
       id: newPost.id,
@@ -133,7 +177,7 @@ export async function POST(request: NextRequest) {
     // Return the created post with explicit status
     return NextResponse.json({
       ...newPost,
-      status: newPost.status || postData.status // Ensure status is always present
+      status: newPost.status || validatedData.status // Ensure status is always present
     }, { status: 201 });
 
   } catch (error) {
@@ -145,6 +189,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           { error: 'A post with this slug already exists', details: error.message },
           { status: 409 }
+        );
+      }
+      
+      if (error.message.includes('SQLITE_ERROR')) {
+        return NextResponse.json(
+          { error: 'Database error - check if categories and users exist', details: error.message },
+          { status: 500 }
         );
       }
       

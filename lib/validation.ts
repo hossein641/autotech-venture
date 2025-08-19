@@ -1,4 +1,4 @@
-// lib/validation.ts - FIXED VERSION with slug and readTime
+// lib/validation.ts - Updated with all required fields
 
 import { z } from 'zod';
 
@@ -9,6 +9,7 @@ export const blogPostSchema = z.object({
   content: z.string().min(100, 'Content must be at least 100 characters'),
   featuredImage: z.string().url('Featured image must be a valid URL').optional().or(z.literal('')),
   categoryId: z.string().cuid('Invalid category ID'),
+  authorId: z.string().cuid('Invalid author ID').optional(), // ADDED: authorId field
   tagIds: z.array(z.string().cuid()).optional(),
   featured: z.boolean().optional().default(false),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional().default('DRAFT'),
@@ -16,7 +17,6 @@ export const blogPostSchema = z.object({
   metaTitle: z.string().max(60, 'Meta title must be less than 60 characters').optional(),
   metaDescription: z.string().max(160, 'Meta description must be less than 160 characters').optional(),
   keywords: z.array(z.string()).optional(),
-  // ADDED: Missing fields that caused TypeScript errors
   slug: z.string().optional(), // Optional because it can be auto-generated
   readTime: z.number().int().positive().optional(), // Optional because it can be auto-calculated
 });
