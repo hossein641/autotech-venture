@@ -1,279 +1,445 @@
-// lib/database.ts - Single source of truth for database connections
-import { turso } from './turso';
-import { prisma } from './prisma';
+// lib/database.ts - CLEAN VERSION without syntax errors
+import { PrismaClient } from '@prisma/client';
+import { createClient } from '@libsql/client';
 
-// Determine which database to use based on environment
-const USE_TURSO = process.env.DATABASE_URL?.startsWith('libsql://') || 
-                  process.env.NODE_ENV === 'production';
+// Initialize Prisma client
+const prisma = new PrismaClient();
 
-console.log('🔍 Database Configuration:', {
-  NODE_ENV: process.env.NODE_ENV,
-  DATABASE_URL_TYPE: process.env.DATABASE_URL?.split('://')[0],
-  USING_TURSO: USE_TURSO,
-  TIMESTAMP: new Date().toISOString()
-});
+// Environment variables
+const DATABASE_URL = process.env.DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
-export const dbClient = USE_TURSO ? 'turso' : 'prisma';
+// Determine which database to use
+const USE_TURSO = DATABASE_URL?.includes('turso.io') && TURSO_AUTH_TOKEN;
 
-// Unified blog post queries
-export async function getBlogPosts(filters: any = {}, pagination: any = {}) {
-  const page = pagination.page || 1;
-  const limit = pagination.limit || 10;
-  
-  console.log('🔍 getBlogPosts called with:', { filters, pagination, dbClient });
+let turso: any = null;
+if (USE_TURSO) {
+  turso = createClient({
+    url: DATABASE_URL!,
+    authToken: TURSO_AUTH_TOKEN
+  });
+}
+
+console.log(`🔧 Database client: ${USE_TURSO ? 'Turso' : 'SQLite'}`);
+
+// Get blog posts with proper status filtering
+export async function getBlogPosts(filters: any = {}) {
+  console.log('🔍 getBlogPosts called with filters:', filters);
   
   if (USE_TURSO) {
-    // Use Turso for production
-    let sql = `
-      SELECT 
-        bp.id, bp.slug, bp.title, bp.excerpt, bp.content, bp.featuredImage,
-        bp.publishedAt, bp.readTime, bp.featured, bp.status, bp.metaTitle, 
-        bp.metaDescription, bp.keywords, bp.createdAt, bp.updatedAt,
-        u.name as authorName, u.avatar as authorAvatar, u.title as authorTitle,
-        c.name as categoryName, c.slug as categorySlug, c.color as categoryColor
-      FROM BlogPost bp
-      JOIN User u ON bp.authorId = u.id
-      JOIN Category c ON bp.categoryId = c.id
-      WHERE 1=1
-    `;
-    
-    const args: any[] = [];
-    
-    // Add status filtering - default to PUBLISHED for public API
-    if (filters.status) {
-      sql += ` AND bp.status = ?`;
-      args.push(filters.status);
-    } else {
-      sql += ` AND bp.status = 'PUBLISHED'`;
-    }
-    
-    if (filters.search) {
-      sql += ` AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)`;
-      const searchTerm = `%${filters.search}%`;
-      args.push(searchTerm, searchTerm, searchTerm);
-    }
-    
-    if (filters.category) {
-      sql += ` AND c.slug = ?`;
-      args.push(filters.category);
-    }
-    
-    if (filters.featured !== undefined) {
-      sql += ` AND bp.featured = ?`;
-      args.push(filters.featured ? 1 : 0);
-    }
-
-    if (filters.authorId) {
-      sql += ` AND bp.authorId = ?`;
-      args.push(filters.authorId);
-    }
-    
-    // Add ordering based on sortBy parameter
-    if (pagination.sortBy === 'publishedAt') {
-      sql += ` ORDER BY bp.publishedAt ${pagination.sortOrder || 'DESC'}`;
-    } else if (pagination.sortBy === 'createdAt') {
-      sql += ` ORDER BY bp.createdAt ${pagination.sortOrder || 'DESC'}`;
-    } else if (pagination.sortBy === 'updatedAt') {
-      sql += ` ORDER BY bp.updatedAt ${pagination.sortOrder || 'DESC'}`;
-    } else {
-      sql += ` ORDER BY bp.publishedAt DESC`;
-    }
-    
-    sql += ` LIMIT ? OFFSET ?`;
-    args.push(limit, (page - 1) * limit);
-    
-    console.log('🔍 Turso Query:', { sql, args });
-    
-    const result = await turso.execute({ sql, args });
-    
-    console.log('🔍 Turso Result Count:', result.rows.length);
-    
-    const transformedPosts = result.rows.map(row => ({
-      id: String(row.id),
-      slug: String(row.slug),
-      title: String(row.title),
-      excerpt: String(row.excerpt),
-      content: String(row.content),
-      featuredImage: row.featuredImage ? String(row.featuredImage) : null,
-      publishedAt: row.publishedAt ? String(row.publishedAt) : null,
-      updatedAt: row.updatedAt ? String(row.updatedAt) : null,
-      readTime: Number(row.readTime) || 5,
-      featured: Boolean(row.featured),
-      status: String(row.status),
-      author: {
-        name: String(row.authorName),
-        avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
-        title: row.authorTitle ? String(row.authorTitle) : null
-      },
-      category: String(row.categoryName),
-      tags: [],
-      seo: {
-        metaTitle: row.metaTitle ? String(row.metaTitle) : null,
-        metaDescription: row.metaDescription ? String(row.metaDescription) : null,
-        keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
-      }
-    }));
-
-    // Get total count for pagination
-    let countSql = `SELECT COUNT(*) as total FROM BlogPost bp`;
-    const countArgs: any[] = [];
-    
-    if (filters.category || filters.search || filters.featured !== undefined || filters.authorId || filters.status) {
-      countSql += ` JOIN User u ON bp.authorId = u.id JOIN Category c ON bp.categoryId = c.id WHERE 1=1`;
-      
-      if (filters.status) {
-        countSql += ` AND bp.status = ?`;
-        countArgs.push(filters.status);
-      } else {
-        countSql += ` AND bp.status = 'PUBLISHED'`;
-      }
-      
-      if (filters.search) {
-        countSql += ` AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)`;
-        const searchTerm = `%${filters.search}%`;
-        countArgs.push(searchTerm, searchTerm, searchTerm);
-      }
-      
-      if (filters.category) {
-        countSql += ` AND c.slug = ?`;
-        countArgs.push(filters.category);
-      }
-      
-      if (filters.featured !== undefined) {
-        countSql += ` AND bp.featured = ?`;
-        countArgs.push(filters.featured ? 1 : 0);
-      }
-      
-      if (filters.authorId) {
-        countSql += ` AND bp.authorId = ?`;
-        countArgs.push(filters.authorId);
-      }
-    } else {
-      countSql += ` WHERE bp.status = 'PUBLISHED'`;
-    }
-
-    const countResult = await turso.execute({ sql: countSql, args: countArgs });
-    const totalCount = Number(countResult.rows[0]?.total) || 0;
-    
-    return { posts: transformedPosts, totalCount };
-    
+    return await getBlogPostsTurso(filters);
   } else {
-    // Use Prisma for local development
-    const where: any = {};
-    
-    // Default to published posts unless specifically requested
-    if (filters.status) {
-      where.status = filters.status;
-    } else {
-      where.status = 'PUBLISHED';
-    }
-    
-    if (filters.search) {
-      where.OR = [
-        { title: { contains: filters.search } },
-        { excerpt: { contains: filters.search } },
-        { content: { contains: filters.search } },
-      ];
-    }
-    
-    if (filters.category) {
-      where.category = { slug: filters.category };
-    }
-    
-    if (filters.featured !== undefined) {
-      where.featured = filters.featured;
-    }
-
-    if (filters.authorId) {
-      where.authorId = filters.authorId;
-    }
-    
-    // Build order by clause
-    const orderBy: any = {};
-    if (pagination.sortBy === 'publishedAt') {
-      orderBy.publishedAt = pagination.sortOrder || 'desc';
-    } else if (pagination.sortBy === 'createdAt') {
-      orderBy.createdAt = pagination.sortOrder || 'desc';
-    } else if (pagination.sortBy === 'updatedAt') {
-      orderBy.updatedAt = pagination.sortOrder || 'desc';
-    } else {
-      orderBy.publishedAt = 'desc';
-    }
-    
-    console.log('🔍 Prisma Query:', { where, orderBy });
-    
-    const [posts, totalCount] = await Promise.all([
-      prisma.blogPost.findMany({
-        where,
-        include: {
-          author: { select: { name: true, avatar: true, title: true } },
-          category: { select: { name: true, slug: true, color: true } },
-          tags: { include: { tag: { select: { name: true, slug: true } } } }
-        },
-        orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.blogPost.count({ where })
-    ]);
-    
-    console.log('🔍 Prisma Result Count:', posts.length);
-    
-    // Transform to consistent format
-    const transformedPosts = posts.map((post: any) => ({
-      id: post.id,
-      slug: post.slug,
-      title: post.title,
-      excerpt: post.excerpt,
-      content: post.content,
-      featuredImage: post.featuredImage,
-      publishedAt: post.publishedAt?.toISOString() || null,
-      updatedAt: post.updatedAt?.toISOString() || null,
-      readTime: post.readTime,
-      featured: post.featured,
-      status: post.status,
-      author: {
-        name: post.author.name,
-        avatar: post.author.avatar || '/images/team/hossein.jpg',
-        title: post.author.title
-      },
-      category: post.category.name,
-      tags: post.tags.map((t: any) => t.tag.name),
-      seo: {
-        metaTitle: post.metaTitle,
-        metaDescription: post.metaDescription,
-        keywords: post.keywords ? JSON.parse(post.keywords) : []
-      }
-    }));
-    
-    return { posts: transformedPosts, totalCount };
+    return await getBlogPostsPrisma(filters);
   }
 }
 
+// Prisma implementation with status handling
+async function getBlogPostsPrisma(filters: any) {
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    category,
+    tags,
+    status,
+    featured,
+    author
+  } = filters;
+
+  const skip = (page - 1) * limit;
+
+  // Build where clause with proper status filtering
+  const where: any = {};
+
+  // Status filtering logic
+  if (status) {
+    where.status = status;
+    console.log(`🔍 Filtering by status: ${status}`);
+  } else {
+    // Default to published posts for public API calls
+    where.status = 'PUBLISHED';
+    console.log('🔍 No status filter provided, defaulting to PUBLISHED');
+  }
+
+  if (search) {
+    where.OR = [
+      { title: { contains: search } },
+      { excerpt: { contains: search } },
+      { content: { contains: search } }
+    ];
+  }
+
+  if (category) {
+    where.category = { slug: category };
+  }
+
+  if (tags && Array.isArray(tags)) {
+    where.tags = {
+      some: {
+        tag: {
+          slug: { in: tags }
+        }
+      }
+    };
+  }
+
+  if (featured !== undefined) {
+    where.featured = featured;
+  }
+
+  if (author) {
+    where.author = { email: author };
+  }
+
+  console.log('🔍 Prisma where clause:', where);
+
+  // Execute query with explicit status selection
+  const [posts, total] = await Promise.all([
+    prisma.blogPost.findMany({
+      where,
+      include: {
+        author: { select: { name: true, avatar: true, title: true } },
+        category: { select: { name: true, slug: true, color: true } },
+        tags: { include: { tag: { select: { name: true, slug: true } } } }
+      },
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: limit
+    }),
+    prisma.blogPost.count({ where })
+  ]);
+
+  console.log(`✅ Prisma query returned ${posts.length} posts`);
+
+  // Transform posts with explicit status inclusion
+  const transformedPosts = posts.map((post: any) => ({
+    id: post.id,
+    slug: post.slug,
+    title: post.title,
+    excerpt: post.excerpt,
+    content: post.content,
+    featuredImage: post.featuredImage,
+    publishedAt: post.publishedAt?.toISOString() || null,
+    updatedAt: post.updatedAt?.toISOString() || null,
+    readTime: post.readTime,
+    featured: post.featured,
+    status: post.status, // Explicitly include status
+    author: {
+      name: post.author.name,
+      avatar: post.author.avatar || '/images/team/hossein.jpg',
+      title: post.author.title || 'Author'
+    },
+    category: post.category.name,
+    tags: post.tags.map((t: any) => t.tag.name),
+    seo: {
+      metaTitle: post.metaTitle,
+      metaDescription: post.metaDescription,
+      keywords: post.keywords ? JSON.parse(post.keywords) : []
+    }
+  }));
+
+  console.log('🔍 First transformed post status:', transformedPosts[0]?.status);
+  return { posts: transformedPosts, total };
+}
+
+// Turso implementation with status handling
+async function getBlogPostsTurso(filters: any) {
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    category,
+    tags,
+    status,
+    featured,
+    author
+  } = filters;
+
+  const offset = (page - 1) * limit;
+  let sql = `
+    SELECT 
+      bp.*,
+      u.name as authorName,
+      u.avatar as authorAvatar,
+      u.title as authorTitle,
+      c.name as categoryName,
+      c.slug as categorySlug,
+      c.color as categoryColor
+    FROM BlogPost bp
+    LEFT JOIN User u ON bp.authorId = u.id
+    LEFT JOIN Category c ON bp.categoryId = c.id
+    WHERE 1=1
+  `;
+  
+  const args: any[] = [];
+
+  // Status filtering for Turso
+  if (status) {
+    sql += ' AND bp.status = ?';
+    args.push(status);
+    console.log(`🔍 Turso filtering by status: ${status}`);
+  } else {
+    // Default to published posts
+    sql += ' AND bp.status = ?';
+    args.push('PUBLISHED');
+    console.log('🔍 Turso defaulting to PUBLISHED status');
+  }
+
+  if (search) {
+    sql += ' AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)';
+    const searchTerm = `%${search}%`;
+    args.push(searchTerm, searchTerm, searchTerm);
+  }
+
+  if (category) {
+    sql += ' AND c.slug = ?';
+    args.push(category);
+  }
+
+  if (featured !== undefined) {
+    sql += ' AND bp.featured = ?';
+    args.push(featured ? 1 : 0);
+  }
+
+  sql += ' ORDER BY bp.createdAt DESC LIMIT ? OFFSET ?';
+  args.push(limit, offset);
+
+  console.log('🔍 Turso SQL:', sql);
+  console.log('🔍 Turso args:', args);
+
+  const result = await turso.execute({ sql, args });
+  console.log(`✅ Turso query returned ${result.rows.length} posts`);
+
+  // Count total
+  let countSql = 'SELECT COUNT(*) as count FROM BlogPost bp LEFT JOIN Category c ON bp.categoryId = c.id WHERE 1=1';
+  const countArgs: any[] = [];
+
+  if (status) {
+    countSql += ' AND bp.status = ?';
+    countArgs.push(status);
+  } else {
+    countSql += ' AND bp.status = ?';
+    countArgs.push('PUBLISHED');
+  }
+
+  if (search) {
+    countSql += ' AND (bp.title LIKE ? OR bp.excerpt LIKE ? OR bp.content LIKE ?)';
+    const searchTerm = `%${search}%`;
+    countArgs.push(searchTerm, searchTerm, searchTerm);
+  }
+
+  if (category) {
+    countSql += ' AND c.slug = ?';
+    countArgs.push(category);
+  }
+
+  if (featured !== undefined) {
+    countSql += ' AND bp.featured = ?';
+    countArgs.push(featured ? 1 : 0);
+  }
+
+  const countResult = await turso.execute({ sql: countSql, args: countArgs });
+  const total = Number(countResult.rows[0]?.count) || 0;
+
+  // Transform Turso results with explicit status
+  const posts = result.rows.map((row: any) => ({
+    id: String(row.id),
+    slug: String(row.slug),
+    title: String(row.title),
+    excerpt: String(row.excerpt),
+    content: String(row.content),
+    featuredImage: row.featuredImage ? String(row.featuredImage) : null,
+    publishedAt: row.publishedAt ? new Date(String(row.publishedAt)).toISOString() : null,
+    updatedAt: row.updatedAt ? new Date(String(row.updatedAt)).toISOString() : null,
+    readTime: Number(row.readTime) || 5,
+    featured: Boolean(row.featured),
+    status: String(row.status), // Explicitly include status from database
+    author: {
+      name: String(row.authorName),
+      avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
+      title: row.authorTitle ? String(row.authorTitle) : 'Author'
+    },
+    category: String(row.categoryName),
+    tags: [], // Tags require separate query in Turso
+    seo: {
+      metaTitle: row.metaTitle ? String(row.metaTitle) : null,
+      metaDescription: row.metaDescription ? String(row.metaDescription) : null,
+      keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
+    }
+  }));
+
+  console.log('🔍 First Turso transformed post status:', posts[0]?.status);
+  return { posts, total };
+}
+
+// Create blog post with explicit status handling
+export async function createBlogPost(data: any) {
+  console.log('🔍 createBlogPost called with:', { 
+    title: data.title, 
+    status: data.status,
+    database: USE_TURSO ? 'Turso' : 'Prisma'
+  });
+
+  // Ensure status is always set
+  const postData = {
+    ...data,
+    status: data.status || 'DRAFT' // Default to DRAFT if not specified
+  };
+
+  if (USE_TURSO) {
+    return await createBlogPostTurso(postData);
+  } else {
+    return await createBlogPostPrisma(postData);
+  }
+}
+
+// Prisma create with explicit status
+async function createBlogPostPrisma(data: any) {
+  const createData = {
+    slug: data.slug,
+    title: data.title,
+    excerpt: data.excerpt,
+    content: data.content,
+    featuredImage: data.featuredImage,
+    authorId: data.authorId,
+    categoryId: data.categoryId,
+    featured: data.featured || false,
+    status: data.status || 'DRAFT', // Explicit status
+    publishedAt: data.publishedAt ? new Date(data.publishedAt) : null,
+    readTime: data.readTime,
+    metaTitle: data.metaTitle,
+    metaDescription: data.metaDescription,
+    keywords: JSON.stringify(data.keywords || [])
+  };
+
+  console.log('🔍 Prisma create data:', {
+    title: createData.title,
+    status: createData.status,
+    featured: createData.featured
+  });
+
+  const result = await prisma.blogPost.create({ 
+    data: createData,
+    include: {
+      author: { select: { name: true, avatar: true, title: true } },
+      category: { select: { name: true, slug: true, color: true } },
+      tags: { include: { tag: { select: { name: true, slug: true } } } }
+    }
+  });
+
+  console.log('✅ Prisma created post with status:', result.status);
+
+  // Return with explicit status
+  return {
+    id: result.id,
+    slug: result.slug,
+    title: result.title,
+    excerpt: result.excerpt,
+    content: result.content,
+    featuredImage: result.featuredImage,
+    publishedAt: result.publishedAt?.toISOString() || null,
+    readTime: result.readTime,
+    featured: result.featured,
+    status: result.status, // Include status in response
+    author: {
+      name: result.author.name,
+      avatar: result.author.avatar || '/images/team/hossein.jpg',
+      title: result.author.title || 'Author'
+    },
+    category: result.category.name,
+    tags: result.tags.map((t: any) => t.tag.name),
+    seo: {
+      metaTitle: result.metaTitle,
+      metaDescription: result.metaDescription,
+      keywords: result.keywords ? JSON.parse(result.keywords) : []
+    }
+  };
+}
+
+// Turso create with explicit status
+async function createBlogPostTurso(data: any) {
+  const id = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = new Date().toISOString();
+  
+  const sql = `
+    INSERT INTO BlogPost (
+      id, slug, title, excerpt, content, featuredImage, publishedAt,
+      readTime, featured, status, metaTitle, metaDescription, keywords,
+      authorId, categoryId, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  const status = data.status || 'DRAFT'; // Explicit status handling
+  
+  console.log('🔍 Turso creating post with status:', status);
+
+  await turso.execute({
+    sql,
+    args: [
+      id, data.slug, data.title, data.excerpt, data.content,
+      data.featuredImage, data.publishedAt || now, data.readTime || 5,
+      data.featured ? 1 : 0, status, data.metaTitle || null,
+      data.metaDescription || null, JSON.stringify(data.keywords || []),
+      data.authorId, data.categoryId, now, now
+    ]
+  });
+
+  console.log('✅ Turso created post with status:', status);
+
+  // Return the created post with explicit status
+  return {
+    id,
+    slug: data.slug,
+    title: data.title,
+    excerpt: data.excerpt,
+    content: data.content,
+    featuredImage: data.featuredImage,
+    publishedAt: data.publishedAt || now,
+    readTime: data.readTime || 5,
+    featured: data.featured || false,
+    status: status, // Include status in response
+    author: {
+      name: 'Admin User', // Default - should be fetched from database
+      avatar: '/images/team/hossein.jpg',
+      title: 'Author'
+    },
+    category: 'General', // Default - should be fetched from database
+    tags: [],
+    seo: {
+      metaTitle: data.metaTitle,
+      metaDescription: data.metaDescription,
+      keywords: data.keywords || []
+    }
+  };
+}
+
+// Get individual blog post by slug
 export async function getBlogPostBySlug(slug: string) {
-  console.log('🔍 getBlogPostBySlug called with:', { slug, dbClient });
+  console.log('🔍 getBlogPostBySlug called with slug:', slug);
   
   if (USE_TURSO) {
     const sql = `
       SELECT 
-        bp.*, 
-        u.name as authorName, u.avatar as authorAvatar, u.title as authorTitle,
-        c.name as categoryName, c.slug as categorySlug
+        bp.*,
+        u.name as authorName,
+        u.avatar as authorAvatar,
+        u.title as authorTitle,
+        c.name as categoryName,
+        c.slug as categorySlug,
+        c.color as categoryColor
       FROM BlogPost bp
-      JOIN User u ON bp.authorId = u.id
-      JOIN Category c ON bp.categoryId = c.id
+      LEFT JOIN User u ON bp.authorId = u.id
+      LEFT JOIN Category c ON bp.categoryId = c.id
       WHERE (bp.slug = ? OR bp.id = ?) AND bp.status = 'PUBLISHED'
       LIMIT 1
     `;
     
-    const result = await turso.execute({ 
-      sql, 
-      args: [slug, slug] 
-    });
+    const result = await turso.execute({ sql, args: [slug, slug] });
     
     if (result.rows.length === 0) return null;
     
     const row = result.rows[0];
+    
     return {
       id: String(row.id),
       slug: String(row.slug),
@@ -281,11 +447,11 @@ export async function getBlogPostBySlug(slug: string) {
       excerpt: String(row.excerpt),
       content: String(row.content),
       featuredImage: row.featuredImage ? String(row.featuredImage) : null,
-      publishedAt: row.publishedAt ? String(row.publishedAt) : null,
-      updatedAt: row.updatedAt ? String(row.updatedAt) : null,
+      publishedAt: row.publishedAt ? new Date(String(row.publishedAt)).toISOString() : null,
+      updatedAt: row.updatedAt ? new Date(String(row.updatedAt)).toISOString() : null,
       readTime: Number(row.readTime) || 5,
       featured: Boolean(row.featured),
-      status: String(row.status), // Ensure status is always included
+      status: String(row.status),
       author: {
         name: String(row.authorName),
         avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
@@ -327,7 +493,7 @@ export async function getBlogPostBySlug(slug: string) {
       updatedAt: post.updatedAt?.toISOString() || null,
       readTime: post.readTime,
       featured: post.featured,
-      status: post.status, // Include status from Prisma result
+      status: post.status,
       author: {
         name: post.author.name,
         avatar: post.author.avatar || '/images/team/hossein.jpg',
@@ -341,159 +507,5 @@ export async function getBlogPostBySlug(slug: string) {
         keywords: post.keywords ? JSON.parse(post.keywords) : []
       }
     };
-  }
-}
-
-export async function createBlogPost(data: any) {
-  console.log('🔍 createBlogPost called with:', { title: data.title, status: data.status, dbClient });
-  
-  if (USE_TURSO) {
-    const sql = `
-      INSERT INTO BlogPost (
-        id, slug, title, excerpt, content, featuredImage, publishedAt,
-        readTime, featured, status, metaTitle, metaDescription, keywords,
-        authorId, categoryId, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    const id = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date().toISOString();
-    
-    const result = await turso.execute({
-      sql,
-      args: [
-        id, data.slug, data.title, data.excerpt, data.content,
-        data.featuredImage, data.publishedAt || now, data.readTime || 5,
-        data.featured ? 1 : 0, data.status || 'PUBLISHED',
-        data.metaTitle, data.metaDescription, JSON.stringify(data.keywords || []),
-        data.authorId, data.categoryId, now, now
-      ]
-    });
-    
-    console.log('🔍 Turso createBlogPost result:', result);
-    
-    // Return post in expected format
-    return {
-      id,
-      slug: data.slug,
-      title: data.title,
-      excerpt: data.excerpt,
-      content: data.content,
-      featuredImage: data.featuredImage,
-      publishedAt: data.publishedAt || now,
-      readTime: data.readTime || 5,
-      featured: data.featured || false,
-      status: data.status || 'PUBLISHED',
-      author: {
-        name: 'Dr. Hossein Mohammadi',
-        avatar: '/images/team/hossein.jpg',
-        title: 'AI Solutions Expert & CEO'
-      },
-      category: 'AI Solutions', // You might want to look this up from categoryId
-      tags: data.keywords || [],
-      seo: {
-        metaTitle: data.metaTitle,
-        metaDescription: data.metaDescription,
-        keywords: data.keywords || []
-      }
-    };
-    
-  } else {
-    // For Prisma, handle tags if provided
-    const createData: any = {
-      title: data.title,
-      slug: data.slug,
-      excerpt: data.excerpt,
-      content: data.content,
-      featuredImage: data.featuredImage,
-      authorId: data.authorId,
-      categoryId: data.categoryId,
-      featured: data.featured,
-      status: data.status,
-      publishedAt: data.publishedAt ? new Date(data.publishedAt) : null,
-      readTime: data.readTime,
-      metaTitle: data.metaTitle,
-      metaDescription: data.metaDescription,
-      keywords: JSON.stringify(data.keywords || [])
-    };
-
-    // Handle tags if provided
-    if (data.tagIds && data.tagIds.length > 0) {
-      createData.tags = {
-        create: data.tagIds.map((tagId: string) => ({
-          tagId
-        }))
-      };
-    }
-
-    const result = await prisma.blogPost.create({ 
-      data: createData,
-      include: {
-        author: {
-          select: { name: true, avatar: true, title: true }
-        },
-        category: {
-          select: { name: true, slug: true, color: true }
-        },
-        tags: {
-          include: {
-            tag: {
-              select: { name: true, slug: true }
-            }
-          }
-        }
-      }
-    });
-    
-    console.log('🔍 Prisma createBlogPost result:', result);
-    
-    // Transform to expected format
-    return {
-      id: result.id,
-      slug: result.slug,
-      title: result.title,
-      excerpt: result.excerpt,
-      content: result.content,
-      featuredImage: result.featuredImage,
-      publishedAt: result.publishedAt?.toISOString() || null,
-      readTime: result.readTime,
-      featured: result.featured,
-      status: result.status,
-      author: {
-        name: result.author.name,
-        avatar: result.author.avatar || '/images/team/hossein.jpg',
-        title: result.author.title || 'Author'
-      },
-      category: result.category.name,
-      tags: result.tags.map(t => t.tag.name),
-      seo: {
-        metaTitle: result.metaTitle,
-        metaDescription: result.metaDescription,
-        keywords: result.keywords ? JSON.parse(result.keywords) : []
-      }
-    };
-  }
-}
-
-// Import PostStatus enum for proper typing
-import { PostStatus } from '@prisma/client';
-
-// Get total posts count for any status
-export async function getBlogPostsCount(status?: PostStatus | string) {
-  if (USE_TURSO) {
-    let sql = 'SELECT COUNT(*) as count FROM BlogPost';
-    const args: any[] = [];
-    
-    if (status) {
-      sql += ' WHERE status = ?';
-      args.push(status);
-    }
-    
-    const result = await turso.execute({ sql, args });
-    return Number(result.rows[0]?.count) || 0;
-  } else {
-    return await prisma.blogPost.count({
-      where: status ? { status: status as PostStatus } : undefined
-    });
   }
 }

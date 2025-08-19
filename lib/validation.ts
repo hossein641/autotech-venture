@@ -1,4 +1,4 @@
-// lib/validation.ts - Complete validation schemas for CMS
+// lib/validation.ts - FIXED VERSION with slug and readTime
 
 import { z } from 'zod';
 
@@ -16,6 +16,9 @@ export const blogPostSchema = z.object({
   metaTitle: z.string().max(60, 'Meta title must be less than 60 characters').optional(),
   metaDescription: z.string().max(160, 'Meta description must be less than 160 characters').optional(),
   keywords: z.array(z.string()).optional(),
+  // ADDED: Missing fields that caused TypeScript errors
+  slug: z.string().optional(), // Optional because it can be auto-generated
+  readTime: z.number().int().positive().optional(), // Optional because it can be auto-calculated
 });
 
 // Create Post Schema (alias for blogPostSchema - used in API routes)

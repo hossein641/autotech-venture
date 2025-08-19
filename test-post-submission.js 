@@ -1,0 +1,240 @@
+// test-post-submission.js - Run this to test the fix
+// Usage: node test-post-submission.js
+
+const PRODUCTION_URL = 'https://autotech-venture-nye9mbyb3-hossein641s-projects.vercel.app';
+
+function log(color, message) {
+  const colors = {
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    reset: '\x1b[0m'
+  };
+  console.log(`${colors[color]}${message}${colors.reset}`);
+}
+
+async function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function testStatusFiltering() {
+  log('blue', '\n🧪 TESTING STATUS FILTERING FIX');
+  console.log('═'.repeat(50));
+
+  const tests = [
+    {
+      name: 'All Posts',
+      url: `${PRODUCTION_URL}/api/blog`,
+      expected: 'Should return posts with status field'
+    },
+    {
+      name: 'Published Only',
+      url: `${PRODUCTION_URL}/api/blog?status=PUBLISHED`,
+      expected: 'Should return only PUBLISHED posts'
+    },
+    {
+      name: 'Draft Only',
+      url: `${PRODUCTION_URL}/api/blog?status=DRAFT`,
+      expected: 'Should return only DRAFT posts (or empty if none)'
+    }
+  ];
+
+  for (const test of tests) {
+    try {
+      console.log(`\n🧪 Testing: ${test.name}`);
+      console.log(`   URL: ${test.url}`);
+      console.log(`   Expected: ${test.expected}`);
+
+      const response = await fetch(test.url);
+      const data = await response.json();
+
+      if (response.ok && data.posts) {
+        log('green', `✅ Success - Found ${data.posts.length} posts`);
+        
+        if (data.posts.length > 0) {
+          const firstPost = data.posts[0];
+          console.log(`   📖 Sample: "${firstPost.title}"`);
+          console.log(`   📅 Status: ${firstPost.status || 'UNDEFINED'}`);
+          
+          // Check if status is properly defined
+          if (firstPost.status && firstPost.status !== 'undefined') {
+            log('green', `   ✅ Status field is properly set`);
+          } else {
+            log('red', `   ❌ Status field is still undefined/missing`);
+          }
+        }
+      } else {
+        log('red', `❌ Failed (${response.status})`);
+        console.log('   Error:', data.error || 'Unknown error');
+      }
+    } catch (error) {
+      log('red', `❌ Network error: ${error.message}`);
+    }
+
+    await wait(500);
+  }
+}
+
+async function testPostCreation() {
+  log('blue', '\n🚀 TESTING POST CREATION FIX');
+  console.log('═'.repeat(50));
+
+  const testPost = {
+    title: `Test Post - ${new Date().toISOString()}`,
+    excerpt: "This is a test post to verify the status field fix is working correctly.",
+    content: "This test post content should be saved with proper status field handling. If you can see this post in the admin panel and on the blog page, the fix is working!",
+    featuredImage: "/images/blog/test-post.jpg",
+    categoryId: "cat_ai_solutions_1755215496487", // Use existing category
+    authorId: "user_hossein_1755215496484", // Use existing author
+    status: "PUBLISHED", // CRITICAL: Explicitly set status
+    featured: false,
+    readTime: 2,
+    metaTitle: "Test Post - Status Fix Verification",
+    metaDescription: "Testing the status field fix for AutoTech Venture blog system",
+    keywords: ["test", "fix", "status", "blog"]
+  };
+
+  try {
+    console.log('📝 Creating test post with data:');
+    console.log(`   Title: ${testPost.title}`);
+    console.log(`   Status: ${testPost.status}`);
+    console.log(`   Featured: ${testPost.featured}`);
+
+    const response = await fetch(`${PRODUCTION_URL}/api/blog`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPost)
+    });
+
+    const result = await response.json();
+
+    if (response.ok) {
+      log('green', '✅ Post created successfully!');
+      console.log(`   ID: ${result.id}`);
+      console.log(`   Slug: ${result.slug}`);
+      console.log(`   Status: ${result.status || 'UNDEFINED'}`);
+      console.log(`   Featured: ${result.featured}`);
+
+      // Verify status is properly set
+      if (result.status === 'PUBLISHED') {
+        log('green', '   ✅ Status correctly set to PUBLISHED');
+        console.log(`   📱 View at: ${PRODUCTION_URL}/blog/${result.slug}`);
+        console.log(`   ⚙️ Edit at: ${PRODUCTION_URL}/admin`);
+      } else {
+        log('yellow', `   ⚠️  Status is: ${result.status} (expected PUBLISHED)`);
+      }
+
+      return result;
+    } else {
+      log('red', `❌ Post creation failed (${response.status})`);
+      console.log('   Error:', result.error || 'Unknown error');
+      console.log('   Details:', result.details || 'No additional details');
+      return null;
+    }
+  } catch (error) {
+    log('red', `❌ Post creation error: ${error.message}`);
+    return null;
+  }
+}
+
+async function verifyPostVisibility(post) {
+  if (!post) return;
+  
+  log('blue', '\n👀 TESTING POST VISIBILITY');
+  console.log('═'.repeat(50));
+
+  // Test 1: Check if post appears in API
+  try {
+    console.log('🔍 Checking if post appears in published posts API...');
+    const response = await fetch(`${PRODUCTION_URL}/api/blog?status=PUBLISHED`);
+    const data = await response.json();
+
+    const foundPost = data.posts?.find(p => p.id === post.id);
+    if (foundPost) {
+      log('green', '✅ Post found in published posts API');
+      console.log(`   Status: ${foundPost.status}`);
+    } else {
+      log('red', '❌ Post NOT found in published posts API');
+    }
+  } catch (error) {
+    log('red', `❌ API check failed: ${error.message}`);
+  }
+
+  await wait(1000);
+
+  // Test 2: Check individual post endpoint
+  try {
+    console.log('🔍 Checking individual post endpoint...');
+    const response = await fetch(`${PRODUCTION_URL}/api/blog/${post.slug}`);
+    
+    if (response.ok) {
+      const postData = await response.json();
+      log('green', '✅ Individual post endpoint working');
+      console.log(`   Title: ${postData.title}`);
+      console.log(`   Status: ${postData.status}`);
+    } else {
+      log('red', `❌ Individual post endpoint failed (${response.status})`);
+    }
+  } catch (error) {
+    log('red', `❌ Individual post check failed: ${error.message}`);
+  }
+}
+
+async function runFullTest() {
+  console.log('🚀 AutoTech Venture - Post Submission Fix Verification');
+  console.log('═'.repeat(70));
+  console.log(`🌐 Testing: ${PRODUCTION_URL}`);
+  console.log('🎯 Goal: Verify status field and post submission fixes\n');
+
+  try {
+    // Test 1: Status filtering
+    await testStatusFiltering();
+    await wait(2000);
+
+    // Test 2: Post creation
+    const createdPost = await testPostCreation();
+    await wait(2000);
+
+    // Test 3: Post visibility
+    await verifyPostVisibility(createdPost);
+
+    // Summary
+    log('blue', '\n📋 SUMMARY & NEXT STEPS');
+    console.log('═'.repeat(50));
+    
+    if (createdPost && createdPost.status === 'PUBLISHED') {
+      log('green', '\n🎉 SUCCESS! The fix appears to be working!');
+      console.log('\n✅ What worked:');
+      console.log('   • Post creation with proper status');
+      console.log('   • Status field properly included in responses');
+      console.log('   • Published posts should now appear on blog page');
+      
+      console.log('\n🔧 Next steps:');
+      console.log('   1. Deploy the fixed files to production');
+      console.log('   2. Clear any browser caches');
+      console.log('   3. Test admin panel post creation');
+      console.log(`   4. Check blog page: ${PRODUCTION_URL}/blog`);
+    } else {
+      log('yellow', '\n⚠️  Issues still present. Check the fixes:');
+      console.log('   1. Ensure API route has status field fixes');
+      console.log('   2. Check database functions include status');
+      console.log('   3. Verify environment variables are set');
+      console.log('   4. Deploy changes to production');
+    }
+
+  } catch (error) {
+    log('red', '\n💥 Test failed with error:');
+    console.log(error);
+    console.log('\n🔧 Troubleshooting:');
+    console.log('   1. Check if production site is accessible');
+    console.log('   2. Verify API endpoints are deployed');
+    console.log('   3. Check environment variables in Vercel');
+  }
+}
+
+// Run the test
+console.log('⏱️  Starting test in 3 seconds...\n');
+setTimeout(runFullTest, 3000);
