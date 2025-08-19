@@ -87,18 +87,10 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Blog API POST - Starting request processing');
 
-    // TEMPORARY: Bypass authentication for testing
-    const user = {
-      id: 'user_admin_1',
-      email: 'admin@atechv.com',
-      name: 'Dr. Hossein Mohammadi',
-      role: 'ADMIN'
-    };
-
     const body = await request.json();
     console.log('🔍 Blog API POST - Request body:', JSON.stringify(body, null, 2));
 
-    // Basic validation without Zod for now
+    // Basic validation
     if (!body.title || !body.excerpt || !body.content) {
       return NextResponse.json(
         { 
@@ -114,8 +106,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate slug from title if not provided
-    const slug = body.slug || body.title
+    // Generate slug
+    const slug = body.title
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '')
       .replace(/\s+/g, '-')
@@ -124,123 +116,204 @@ export async function POST(request: NextRequest) {
 
     console.log('🔍 Generated slug:', slug);
 
-    // Check if slug already exists - use unified database
+    // Use Turso in production
     const USE_TURSO = process.env.DATABASE_URL?.startsWith('libsql://') || 
                       process.env.NODE_ENV === 'production';
 
     console.log('🔍 Using database:', USE_TURSO ? 'Turso' : 'Prisma');
 
-    let existingPost;
     if (USE_TURSO) {
       try {
         const { turso } = await import('@/lib/turso');
-        const result = await turso.execute({
+
+        // Check if slug exists
+        const existingSlug = await turso.execute({
           sql: 'SELECT id FROM BlogPost WHERE slug = ? LIMIT 1',
           args: [slug]
         });
-        existingPost = result.rows.length > 0 ? { id: result.rows[0].id } : null;
-        console.log('🔍 Turso slug check result:', existingPost);
+
+        if (existingSlug.rows.length > 0) {
+          return NextResponse.json(
+            { error: 'A post with this title already exists', slug },
+            { status: 400 }
+          );
+        }
+
+        // CRITICAL FIX: Create default user if doesn't exist
+        console.log('🔍 Ensuring default user exists...');
+        await turso.execute({
+          sql: `INSERT OR IGNORE INTO User (id, email, name, title, role, password, createdAt, updatedAt) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            'user_admin_1',
+            'admin@atechv.com',
+            'Dr. Hossein Mohammadi',
+            'AI Solutions Expert & CEO',
+            'ADMIN',
+            'hashed_password_placeholder',
+            new Date().toISOString(),
+            new Date().toISOString()
+          ]
+        });
+
+        // CRITICAL FIX: Create default categories if they don't exist
+        console.log('🔍 Ensuring categories exist...');
+        const categories = [
+          {
+            id: 'cat_ai_solutions_1755215496487',
+            name: 'AI Solutions',
+            slug: 'ai-solutions',
+            description: 'AI and automation solutions',
+            color: '#6366f1'
+          },
+          {
+            id: 'cat_seo_services_1755215496488',
+            name: 'SEO Services', 
+            slug: 'seo-services',
+            description: 'SEO and digital marketing',
+            color: '#10b981'
+          },
+          {
+            id: 'cat_web_development_1755215496489',
+            name: 'Web Development',
+            slug: 'web-development', 
+            description: 'Web development services',
+            color: '#f59e0b'
+          },
+          {
+            id: 'cat_automation_1755215496490',
+            name: 'Automation',
+            slug: 'automation',
+            description: 'Business automation',
+            color: '#ef4444'
+          }
+        ];
+
+        for (const category of categories) {
+          await turso.execute({
+            sql: `INSERT OR IGNORE INTO Category (id, name, slug, description, color, createdAt) 
+                  VALUES (?, ?, ?, ?, ?, ?)`,
+            args: [
+              category.id,
+              category.name, 
+              category.slug,
+              category.description,
+              category.color,
+              new Date().toISOString()
+            ]
+          });
+        }
+
+        console.log('✅ User and categories ensured');
+
+        // Get category ID
+        const categoryMapping: Record<string, string> = {
+          'AI Solutions': 'cat_ai_solutions_1755215496487',
+          'SEO Services': 'cat_seo_services_1755215496488',
+          'Web Development': 'cat_web_development_1755215496489', 
+          'Automation': 'cat_automation_1755215496490'
+        };
+
+        const categoryId = body.categoryId || categoryMapping[body.category] || categoryMapping['AI Solutions'];
+        const readTime = Math.max(1, Math.ceil(body.content.split(' ').length / 200));
+        const postId = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const now = new Date().toISOString();
+
+        console.log('🔍 Inserting post with:', {
+          postId,
+          slug,
+          authorId: 'user_admin_1',
+          categoryId,
+          status: body.status || 'DRAFT'
+        });
+
+        // Insert the blog post
+        const insertResult = await turso.execute({
+          sql: `INSERT INTO BlogPost (
+            id, slug, title, excerpt, content, featuredImage, publishedAt,
+            readTime, featured, status, metaTitle, metaDescription, keywords,
+            authorId, categoryId, createdAt, updatedAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          args: [
+            postId,
+            slug,
+            body.title,
+            body.excerpt,
+            body.content,
+            body.featuredImage || null,
+            body.status === 'PUBLISHED' ? now : null,
+            readTime,
+            body.featured ? 1 : 0,
+            body.status || 'DRAFT',
+            body.metaTitle || null,
+            body.metaDescription || null,
+            JSON.stringify(body.keywords || []),
+            'user_admin_1',
+            categoryId,
+            now,
+            now
+          ]
+        });
+
+        console.log('✅ Post inserted successfully:', insertResult);
+
+        // Return success response
+        const newPost = {
+          id: postId,
+          slug,
+          title: body.title,
+          excerpt: body.excerpt,
+          content: body.content,
+          featuredImage: body.featuredImage,
+          publishedAt: body.status === 'PUBLISHED' ? now : null,
+          readTime,
+          featured: body.featured || false,
+          status: body.status || 'DRAFT',
+          author: {
+            name: 'Dr. Hossein Mohammadi',
+            avatar: '/images/team/hossein.jpg',
+            title: 'AI Solutions Expert & CEO'
+          },
+          category: body.category || 'AI Solutions',
+          tags: body.tags || [],
+          seo: {
+            metaTitle: body.metaTitle,
+            metaDescription: body.metaDescription,
+            keywords: body.keywords || []
+          }
+        };
+
+        return NextResponse.json({ 
+          success: true,
+          post: newPost,
+          message: 'Blog post created successfully'
+        }, { status: 201 });
+
       } catch (tursoError) {
-        console.error('❌ Turso slug check error:', tursoError);
+        console.error('❌ Turso error:', tursoError);
         return NextResponse.json(
           { 
-            error: 'Database connection error',
+            error: 'Database operation failed',
             details: tursoError instanceof Error ? tursoError.message : 'Unknown database error'
           },
           { status: 500 }
         );
       }
     } else {
-      existingPost = await prisma.blogPost.findUnique({
-        where: { slug },
-        select: { id: true }
-      });
-    }
-
-    if (existingPost) {
+      // Prisma fallback (for local development)
       return NextResponse.json(
-        { error: 'A post with this title already exists', slug },
-        { status: 400 }
-      );
-    }
-
-    // Calculate read time (200 words per minute)
-    const readTime = Math.max(1, Math.ceil(body.content.split(' ').length / 200));
-
-    // Get category ID mapping
-    const categoryMapping: Record<string, string> = {
-      'AI Solutions': 'cat_ai_solutions_1755215496487',
-      'SEO Services': 'cat_seo_services_1755215496488', 
-      'Web Development': 'cat_web_development_1755215496489',
-      'Automation': 'cat_automation_1755215496490'
-    };
-
-    const categoryId = body.categoryId || categoryMapping[body.category] || categoryMapping['AI Solutions'];
-    console.log('🔍 Category mapping:', { category: body.category, categoryId });
-
-    // Prepare post data
-    const postData = {
-      title: body.title,
-      slug,
-      excerpt: body.excerpt,
-      content: body.content,
-      featuredImage: body.featuredImage || null,
-      authorId: user.id,
-      categoryId: categoryId,
-      featured: body.featured || false,
-      status: body.status || 'DRAFT',
-      publishedAt: body.status === 'PUBLISHED' 
-        ? (body.publishedAt ? new Date(body.publishedAt).toISOString() : new Date().toISOString())
-        : null,
-      readTime,
-      metaTitle: body.metaTitle || null,
-      metaDescription: body.metaDescription || null,
-      keywords: Array.isArray(body.keywords) ? body.keywords : [],
-      tagIds: Array.isArray(body.tagIds) ? body.tagIds : []
-    };
-
-    console.log('🔍 Blog API POST - Final post data:', JSON.stringify(postData, null, 2));
-
-    // Use unified database module for creation
-    try {
-      const result = await createBlogPost(postData);
-      console.log('🔍 createBlogPost result:', result);
-
-      return NextResponse.json({ 
-        success: true,
-        post: result,
-        message: 'Blog post created successfully'
-      }, { status: 201 });
-
-    } catch (createError) {
-      console.error('❌ Error in createBlogPost:', createError);
-      return NextResponse.json(
-        { 
-          error: 'Failed to create blog post in database',
-          details: createError instanceof Error ? createError.message : 'Unknown database error',
-          stack: process.env.NODE_ENV === 'development' && createError instanceof Error ? createError.stack : undefined
-        },
+        { error: 'Local development not configured' },
         { status: 500 }
       );
     }
 
   } catch (error) {
     console.error('❌ Blog API POST Error:', error);
-    
-    // Detailed error response
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { 
-          error: 'Failed to create blog post', 
-          details: error.message,
-          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-        },
-        { status: 500 }
-      );
-    }
-    
     return NextResponse.json(
-      { error: 'Failed to create blog post', details: 'Unknown error' },
+      { 
+        error: 'Failed to create blog post', 
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
