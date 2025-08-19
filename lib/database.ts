@@ -357,6 +357,8 @@ async function createBlogPostPrisma(data: any) {
 }
 
 // Turso create with explicit status
+// Update the createBlogPostTurso function in lib/database.ts
+
 async function createBlogPostTurso(data: any) {
   const id = `post_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   const now = new Date().toISOString();
@@ -369,48 +371,77 @@ async function createBlogPostTurso(data: any) {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
-  const status = data.status || 'DRAFT'; // Explicit status handling
+  const status = data.status || 'DRAFT';
   
-  console.log('🔍 Turso creating post with status:', status);
-
-  await turso.execute({
-    sql,
-    args: [
-      id, data.slug, data.title, data.excerpt, data.content,
-      data.featuredImage, data.publishedAt || now, data.readTime || 5,
-      data.featured ? 1 : 0, status, data.metaTitle || null,
-      data.metaDescription || null, JSON.stringify(data.keywords || []),
-      data.authorId, data.categoryId, now, now
-    ]
+  console.log('🔍 Turso creating post with data types:', {
+    title: typeof data.title,
+    featured: typeof data.featured,
+    readTime: typeof data.readTime,
+    status: typeof status
   });
 
-  console.log('✅ Turso created post with status:', status);
+  // FIX: Ensure proper types for Turso/SQLite
+  const args = [
+    id,                                           // TEXT
+    data.slug,                                    // TEXT  
+    data.title,                                   // TEXT
+    data.excerpt,                                 // TEXT
+    data.content,                                 // TEXT
+    data.featuredImage || null,                   // TEXT or NULL
+    data.publishedAt || now,                      // TEXT (ISO string)
+    Number(data.readTime) || 5,                   // INTEGER
+    data.featured ? 1 : 0,                        // INTEGER (SQLite boolean)
+    status,                                       // TEXT
+    data.metaTitle || null,                       // TEXT or NULL
+    data.metaDescription || null,                 // TEXT or NULL
+    JSON.stringify(data.keywords || []),          // TEXT (JSON string)
+    data.authorId,                               // TEXT
+    data.categoryId,                             // TEXT
+    now,                                         // TEXT (ISO string)
+    now                                          // TEXT (ISO string)
+  ];
 
-  // Return the created post with explicit status
-  return {
-    id,
-    slug: data.slug,
-    title: data.title,
-    excerpt: data.excerpt,
-    content: data.content,
-    featuredImage: data.featuredImage,
-    publishedAt: data.publishedAt || now,
-    readTime: data.readTime || 5,
-    featured: data.featured || false,
-    status: status, // Include status in response
-    author: {
-      name: 'Admin User', // Default - should be fetched from database
-      avatar: '/images/team/hossein.jpg',
-      title: 'Author'
-    },
-    category: 'General', // Default - should be fetched from database
-    tags: [],
-    seo: {
-      metaTitle: data.metaTitle,
-      metaDescription: data.metaDescription,
-      keywords: data.keywords || []
-    }
-  };
+  console.log('🔍 Turso SQL args with types:', args.map((arg, i) => ({
+    index: i,
+    value: arg,
+    type: typeof arg
+  })));
+
+  try {
+    await turso.execute({ sql, args });
+    console.log('✅ Turso created post successfully');
+
+    // Return the created post with explicit status
+    return {
+      id,
+      slug: data.slug,
+      title: data.title,
+      excerpt: data.excerpt,
+      content: data.content,
+      featuredImage: data.featuredImage,
+      publishedAt: data.publishedAt || now,
+      readTime: Number(data.readTime) || 5,
+      featured: Boolean(data.featured),
+      status: status,
+      author: {
+        name: 'Dr. Hossein Mohammadi', // Should fetch from database
+        avatar: '/images/team/hossein.jpg',
+        title: 'AI Solutions Expert & CEO'
+      },
+      category: 'AI Solutions', // Should fetch from database
+      tags: [],
+      seo: {
+        metaTitle: data.metaTitle,
+        metaDescription: data.metaDescription,
+        keywords: data.keywords || []
+      }
+    };
+  } catch (error) {
+    console.error('❌ Turso insert error:', error);
+    console.error('❌ Failed SQL:', sql);
+    console.error('❌ Failed args:', args);
+    throw error;
+  }
 }
 
 // Get individual blog post by slug
