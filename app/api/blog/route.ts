@@ -82,8 +82,31 @@ export async function POST(request: NextRequest) {
       category: body.category,
       categoryId: body.categoryId,
       authorId: body.authorId,
-      hasContent: !!body.content
+      hasContent: !!body.content,
+      hasExcerpt: !!body.excerpt
     });
+
+    // Basic validation before processing
+    if (!body.title) {
+      return NextResponse.json(
+        { error: 'Title is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.excerpt) {
+      return NextResponse.json(
+        { error: 'Excerpt is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!body.content) {
+      return NextResponse.json(
+        { error: 'Content is required' },
+        { status: 400 }
+      );
+    }
 
     // Category name to ID mapping
     const getCategoryId = (categoryName: string): string => {
@@ -110,12 +133,12 @@ export async function POST(request: NextRequest) {
       keywords: body.keywords || [],
       // FIX: Map category name to categoryId
       categoryId: body.categoryId || getCategoryId(body.category || "AI Solutions"),
-      // FIX: Set default authorId
-      authorId: body.authorId || "user_hossein_1755215496484",
+      // FIX: Set default authorId (corrected to match database)
+      authorId: body.authorId || "author_hossein_1755215496184",
       // Generate slug if not provided
       slug: body.slug || generateSlug(body.title),
-      // Calculate readTime if not provided  
-      readTime: body.readTime || calculateReadTime(body.content)
+      // Calculate readTime if not provided (with safety check)
+      readTime: body.readTime || calculateReadTime(body.content || '')
     };
 
     console.log('🔧 Processed data:', {

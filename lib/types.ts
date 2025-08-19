@@ -81,9 +81,15 @@ export function generateSlug(title: string): string {
 }
 
 export function calculateReadTime(content: string): number {
+  if (!content || typeof content !== 'string') {
+    return 1; // Default to 1 minute for empty content
+  }
+  
   const wordsPerMinute = 200;
-  const wordCount = content.split(/\s+/).length;
-  return Math.ceil(wordCount / wordsPerMinute);
+  const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
+  const readTime = Math.ceil(wordCount / wordsPerMinute);
+  
+  return readTime > 0 ? readTime : 1; // Minimum 1 minute
 }
 
 // Transform database result to frontend format (handles null to undefined conversion)
