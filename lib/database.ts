@@ -444,64 +444,88 @@ async function createBlogPostTurso(data: any) {
   }
 }
 
-// Get individual blog post by slug
+// REPLACE the getBlogPostBySlug function in your lib/database.ts with this fixed version:
+
 export async function getBlogPostBySlug(slug: string) {
   console.log('🔍 getBlogPostBySlug called with slug:', slug);
   
   if (USE_TURSO) {
-    const sql = `
-      SELECT 
-        bp.*,
-        u.name as authorName,
-        u.avatar as authorAvatar,
-        u.title as authorTitle,
-        c.name as categoryName,
-        c.slug as categorySlug,
-        c.color as categoryColor
-      FROM BlogPost bp
-      LEFT JOIN User u ON bp.authorId = u.id
-      LEFT JOIN Category c ON bp.categoryId = c.id
-      WHERE (bp.slug = ? OR bp.id = ?) 
-      LIMIT 1
-    `;
-    
-    const result = await turso.execute({ sql, args: [slug, slug] });
-    
-    if (result.rows.length === 0) return null;
-    
-    const row = result.rows[0];
-    
-    return {
-      id: String(row.id),
-      slug: String(row.slug),
-      title: String(row.title),
-      excerpt: String(row.excerpt),
-      content: String(row.content),
-      featuredImage: row.featuredImage ? String(row.featuredImage) : null,
-      publishedAt: row.publishedAt ? new Date(String(row.publishedAt)).toISOString() : null,
-      updatedAt: row.updatedAt ? new Date(String(row.updatedAt)).toISOString() : null,
-      readTime: Number(row.readTime) || 5,
-      featured: Boolean(row.featured),
-      status: String(row.status),
-      author: {
-        name: String(row.authorName),
-        avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
-        title: row.authorTitle ? String(row.authorTitle) : null
-      },
-      category: String(row.categoryName),
-      tags: [],
-      seo: {
-        metaTitle: row.metaTitle ? String(row.metaTitle) : null,
-        metaDescription: row.metaDescription ? String(row.metaDescription) : null,
-        keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
+    try {
+      const sql = `
+        SELECT 
+          bp.*,
+          u.name as authorName,
+          u.avatar as authorAvatar,
+          u.title as authorTitle,
+          c.name as categoryName,
+          c.slug as categorySlug,
+          c.color as categoryColor
+        FROM BlogPost bp
+        LEFT JOIN User u ON bp.authorId = u.id
+        LEFT JOIN Category c ON bp.categoryId = c.id
+        WHERE bp.slug = ? OR bp.id = ?
+        LIMIT 1
+      `;
+      
+      console.log('🔍 Turso SQL for slug lookup:', sql);
+      console.log('🔍 Search parameters:', { slug, id: slug });
+      
+      const result = await turso.execute({ sql, args: [slug, slug] });
+      
+      console.log('🔍 Turso query result rows:', result.rows.length);
+      if (result.rows.length > 0) {
+        console.log('🔍 Found post:', {
+          id: result.rows[0].id,
+          slug: result.rows[0].slug,
+          title: result.rows[0].title,
+          status: result.rows[0].status
+        });
       }
-    };
+      
+      if (result.rows.length === 0) {
+        console.log('❌ No post found with slug or id:', slug);
+        return null;
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: String(row.id),
+        slug: String(row.slug),
+        title: String(row.title),
+        excerpt: String(row.excerpt),
+        content: String(row.content),
+        featuredImage: row.featuredImage ? String(row.featuredImage) : null,
+        publishedAt: row.publishedAt ? new Date(String(row.publishedAt)).toISOString() : null,
+        updatedAt: row.updatedAt ? new Date(String(row.updatedAt)).toISOString() : null,
+        readTime: Number(row.readTime) || 5,
+        featured: Boolean(row.featured),
+        status: String(row.status),
+        author: {
+          name: String(row.authorName),
+          avatar: row.authorAvatar ? String(row.authorAvatar) : '/images/team/hossein.jpg',
+          title: row.authorTitle ? String(row.authorTitle) : 'AI Solutions Expert & CEO'
+        },
+        category: String(row.categoryName),
+        tags: [],
+        seo: {
+          metaTitle: row.metaTitle ? String(row.metaTitle) : null,
+          metaDescription: row.metaDescription ? String(row.metaDescription) : null,
+          keywords: row.keywords ? JSON.parse(String(row.keywords)) : []
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Error in getBlogPostBySlug (Turso):', error);
+      return null;
+    }
     
   } else {
+    // Prisma version - remove status filter for admin use
     const post = await prisma.blogPost.findFirst({
       where: {
-        OR: [{ slug }, { id: slug }],
-        status: 'PUBLISHED'
+        OR: [{ slug }, { id: slug }]
+        // Removed status filter so admin can access all posts
       },
       include: {
         author: { select: { name: true, avatar: true, title: true } },
@@ -512,7 +536,6 @@ export async function getBlogPostBySlug(slug: string) {
 
     if (!post) return null;
 
-    // Transform to consistent format
     return {
       id: post.id,
       slug: post.slug,
@@ -528,7 +551,7 @@ export async function getBlogPostBySlug(slug: string) {
       author: {
         name: post.author.name,
         avatar: post.author.avatar || '/images/team/hossein.jpg',
-        title: post.author.title
+        title: post.author.title || 'AI Solutions Expert & CEO'
       },
       category: post.category.name,
       tags: post.tags.map((t: any) => t.tag.name),
