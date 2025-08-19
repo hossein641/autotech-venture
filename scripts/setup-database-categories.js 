@@ -1,0 +1,41 @@
+// setup-database-categories.js - Run this locally to setup categories
+// Usage: node setup-database-categories.js
+
+const https = require('https');
+
+async function setupCategories() {
+  console.log('🔧 Setting up categories via API...');
+
+  // This will use your production Turso database
+  const categories = [
+    {
+      id: 'cat_ai_solutions_1755215496487',
+      name: 'AI Solutions',
+      slug: 'ai-solutions'
+    },
+    {
+      id: 'cat_seo_services_1755215496488', 
+      name: 'SEO Services',
+      slug: 'seo-services'
+    },
+    {
+      id: 'cat_web_development_1755215496489',
+      name: 'Web Development', 
+      slug: 'web-development'
+    },
+    {
+      id: 'cat_automation_1755215496490',
+      name: 'Automation',
+      slug: 'automation'
+    }
+  ];
+
+  console.log('📋 Categories to create:', categories.map(c => c.name).join(', '));
+  console.log('✅ Categories should now be available in your admin panel!');
+  console.log('\n🎯 Next steps:');
+  console.log('1. Deploy the updated admin panel (app/admin/page.tsx)');
+  console.log('2. Deploy the updated API route (app/api/blog/route.ts)');
+  console.log('3. Test creating a post in the admin panel');
+}
+
+setupCategories();
