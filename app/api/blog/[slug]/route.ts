@@ -1,39 +1,20 @@
-// app/api/blog/[slug]/route.ts - Updated with Unified Database Module
+// app/api/blog/[slug]/route.ts - PRODUCTION ONLY (Turso)
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
-import { transformPostFromDB } from '@/lib/types';
 import { getBlogPostBySlug } from '@/lib/database';
+import { blogPostSchema } from '@/lib/validation';
+import { generateSlug, calculateReadTime } from '@/lib/types';
+import { createClient } from '@libsql/client';
 
-// Type definitions for better TypeScript support
-interface BlogPost {
-  id: string;
-  slug: string;
-  title: string;
-  excerpt: string;
-  content: string;
-  featuredImage: string | null;
-  author: {
-    name: string;
-    avatar: string;
-    title: string;
-  };
-  publishedAt: string;
-  readTime: number;
-  tags: string[];
-  category: string;
-  featured: boolean;
-  status?: string;
-  seo: {
-    metaTitle: string;
-    metaDescription: string;
-    keywords: string[];
-  };
-}
+// Initialize Turso client for this route
+const DATABASE_URL = process.env.DATABASE_URL;
+const TURSO_AUTH_TOKEN = process.env.TURSO_AUTH_TOKEN;
 
-interface ErrorResponse {
-  error: string;
-}
+const turso = createClient({
+  url: DATABASE_URL!,
+  authToken: TURSO_AUTH_TOKEN!
+});
 
+// GET /api/blog/[slug] - Fetch individual post by slug
 export async function GET(
   request: NextRequest,
   { params }: { params: { slug: string } }
@@ -47,7 +28,6 @@ export async function GET(
       url: request.url
     });
 
-    // Use unified database module
     const post = await getBlogPostBySlug(slug);
 
     if (!post) {
@@ -68,13 +48,6 @@ export async function GET(
 
   } catch (error) {
     console.error('❌ Individual Post API Error:', error);
-    
-    // Fallback to sample post if database fails
-    const fallbackPost = getSamplePostBySlug(params.slug);
-    if (fallbackPost && !('error' in fallbackPost)) {
-      return NextResponse.json(fallbackPost);
-    }
-    
     return NextResponse.json(
       { error: 'Failed to fetch post', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
@@ -82,160 +55,249 @@ export async function GET(
   }
 }
 
-// Sample post fallback (for demo purposes)
-function getSamplePostBySlug(slug: string): BlogPost | ErrorResponse {
-  const samplePosts: BlogPost[] = [
-    {
-      id: '1',
-      slug: 'ai-automation-small-business-dayton',
-      title: 'How AI Automation Transforms Small Businesses in Dayton',
-      excerpt: 'Discover how local Dayton businesses are leveraging AI automation to streamline operations, reduce costs, and increase productivity in 2025.',
-      content: `<h2>The AI Revolution in Dayton</h2>
-<p>Small businesses in Dayton, Ohio are experiencing unprecedented growth through AI automation. From inventory management to customer service, artificial intelligence is transforming how local companies operate.</p>
-
-<h3>Key Benefits for Dayton Businesses:</h3>
-<ul>
-<li>Automated customer service chatbots that respond 24/7</li>
-<li>Intelligent inventory management that predicts demand</li>
-<li>Predictive analytics for accurate sales forecasting</li>
-<li>Automated social media management and content creation</li>
-<li>Smart appointment scheduling systems</li>
-</ul>
-
-<p>At AutoTech Venture, we help Dayton businesses implement these cutting-edge solutions. Our AI automation services have helped local companies reduce operational costs by up to 40% while improving customer satisfaction.</p>
-
-<h3>Success Stories from Dayton</h3>
-<p>One of our clients, a local manufacturing company, implemented our AI quality control system and reduced defects by 60%. Another Dayton retailer used our inventory optimization AI to reduce stockouts by 75%.</p>
-
-<p>Ready to transform your business with AI? Contact AutoTech Venture today for a free consultation and discover how artificial intelligence can revolutionize your operations.</p>`,
-      featuredImage: '/images/blog/ai-automation.jpg',
-      author: {
-        name: 'Dr. Hossein Mohammadi',
-        avatar: '/images/team/hossein.jpg',
-        title: 'AI Solutions Expert'
-      },
-      publishedAt: new Date().toISOString(),
-      readTime: 5,
-      tags: ['AI', 'Automation', 'Small Business', 'Dayton'],
-      category: 'AI Solutions',
-      featured: true,
-      seo: {
-        metaTitle: 'AI Automation for Small Business Dayton Ohio | AutoTech Venture',
-        metaDescription: 'Learn how AI automation helps Dayton small businesses improve efficiency and reduce costs. Expert AI consulting services in Ohio.',
-        keywords: ['AI automation', 'small business Dayton', 'business automation Ohio']
-      }
-    },
-    {
-      id: '2',
-      slug: 'seo-services-dayton-ohio-2025',
-      title: 'Complete SEO Guide for Dayton Ohio Businesses in 2025',
-      excerpt: 'Master local SEO strategies that help Dayton businesses rank higher in Google search results and attract more local customers.',
-      content: `<h2>Local SEO Success in Dayton</h2>
-<p>Ranking high in local search results is crucial for Dayton businesses. Our comprehensive SEO strategies help local companies dominate search results and attract more customers from the greater Dayton area.</p>
-
-<h3>Our Proven Dayton SEO Services Include:</h3>
-<ul>
-<li>Google Business Profile optimization for maximum visibility</li>
-<li>Local keyword research targeting Dayton-specific searches</li>
-<li>Complete website technical SEO audits and fixes</li>
-<li>Content marketing strategies that engage local audiences</li>
-<li>Local citation building across Ohio directories</li>
-<li>Online reputation management and review optimization</li>
-</ul>
-
-<h3>Why Dayton Businesses Choose AutoTech Venture for SEO</h3>
-<p>We understand the local Dayton market and know exactly what it takes to rank well in Ohio. Our clients typically see a 200% increase in organic traffic within 6 months.</p>
-
-<h3>Local SEO Results That Matter</h3>
-<p>Our recent client, a Dayton accounting firm, went from page 3 to position #1 for "tax services Dayton Ohio" in just 4 months. A local restaurant we worked with increased their online orders by 150% through improved local search visibility.</p>
-
-<p>Ready to dominate local search results? Contact AutoTech Venture for a free SEO audit and see how we can help your Dayton business attract more customers online.</p>`,
-      featuredImage: '/images/blog/seo-services.jpg',
-      author: {
-        name: 'Dr. Hossein Mohammadi',
-        avatar: '/images/team/hossein.jpg',
-        title: 'SEO Specialist'
-      },
-      publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-      readTime: 7,
-      tags: ['SEO', 'Local SEO', 'Dayton Ohio', 'Digital Marketing'],
-      category: 'SEO Services',
-      featured: false,
-      seo: {
-        metaTitle: 'SEO Services Dayton Ohio | Local Search Optimization | AutoTech Venture',
-        metaDescription: 'Professional SEO services for Dayton businesses. Improve local search rankings and attract more customers with our proven strategies.',
-        keywords: ['SEO services Dayton', 'local SEO Ohio', 'Dayton digital marketing']
-      }
-    }
-  ];
-
-  // Find post by slug
-  const post = samplePosts.find(p => p.slug === slug);
-  
-  if (!post) {
-    return { error: 'Post not found' };
-  }
-
-  return post;
-}
-
-// PATCH route for updating posts (keep your existing logic - only works in development)
-export async function PATCH(
+// PUT /api/blog/[slug] - Update existing post by slug
+export async function PUT(
   request: NextRequest,
   { params }: { params: { slug: string } }
 ) {
   try {
-    // Only allow updates in development
-    const isProduction = process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production';
-    
-    if (isProduction) {
+    console.log('🔧 PUT /api/blog/[slug] - Updating post:', params.slug);
+
+    // Parse request body
+    const body = await request.json();
+    console.log('📝 Update request body received:', {
+      title: body.title,
+      status: body.status,
+      category: body.category,
+      hasContent: !!body.content,
+      hasExcerpt: !!body.excerpt
+    });
+
+    // Basic validation before processing
+    if (!body.title) {
       return NextResponse.json(
-        { error: 'Updates not allowed in production' },
-        { status: 403 }
+        { error: 'Title is required' },
+        { status: 400 }
       );
     }
 
-    const { slug } = params;
-    const updateData = await request.json();
+    if (!body.excerpt) {
+      return NextResponse.json(
+        { error: 'Excerpt is required' },
+        { status: 400 }
+      );
+    }
 
-    const updatedPost = await prisma.blogPost.update({
-      where: { slug },
-      data: updateData,
-      include: {
-        author: {
-          select: {
-            name: true,
-            avatar: true,
-            title: true
-          }
-        },
-        category: {
-          select: {
-            name: true,
-            slug: true,
-            color: true
-          }
-        },
-        tags: {
-          include: {
-            tag: {
-              select: {
-                name: true,
-                slug: true
-              }
-            }
-          }
-        }
-      }
+    if (!body.content) {
+      return NextResponse.json(
+        { error: 'Content is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if post exists first
+    const existingPost = await getBlogPostBySlug(params.slug);
+    if (!existingPost) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
+    }
+
+    // Category name to ID mapping (your exact production mapping)
+    const getCategoryId = (categoryName: string): string => {
+      const categoryMap: Record<string, string> = {
+        "AI Solutions": "cat_ai",
+        "SEO Services": "cat_seo", 
+        "Web Development": "cat_web",
+        "Automation": "cat_auto"
+      };
+      
+      return categoryMap[categoryName] || "cat_ai";
+    };
+
+    // Process the data before validation
+    const processedBody = {
+      title: body.title,
+      excerpt: body.excerpt, 
+      content: body.content,
+      featuredImage: body.featuredImage,
+      featured: body.featured || false,
+      status: body.status || 'DRAFT',
+      metaTitle: body.metaTitle,
+      metaDescription: body.metaDescription,
+      keywords: body.keywords || [],
+      categoryId: body.categoryId || getCategoryId(body.category || "AI Solutions"),
+      authorId: body.authorId || "author_hossein_1755215496184",
+      slug: body.slug || params.slug,
+      readTime: body.readTime || calculateReadTime(body.content || '')
+    };
+
+    console.log('🔧 Processed update data:', {
+      title: processedBody.title,
+      categoryId: processedBody.categoryId,
+      slug: processedBody.slug,
+      status: processedBody.status
     });
 
-    const transformedPost = transformPostFromDB(updatedPost);
-    return NextResponse.json(transformedPost);
+    // Validate the processed data
+    const validation = blogPostSchema.safeParse(processedBody);
+    if (!validation.success) {
+      console.log('❌ Validation failed:', validation.error.format());
+      return NextResponse.json(
+        { error: 'Invalid blog post data', details: validation.error.format() },
+        { status: 400 }
+      );
+    }
+
+    const validatedData = validation.data;
+
+    // Set publishedAt if status is PUBLISHED and it wasn't published before
+    if (validatedData.status === 'PUBLISHED' && !existingPost.publishedAt) {
+      validatedData.publishedAt = new Date().toISOString();
+      console.log(`📅 Set publishedAt: ${validatedData.publishedAt}`);
+    }
+
+    // Update in Turso database
+    const now = new Date().toISOString();
+    
+    const sql = `
+      UPDATE BlogPost SET
+        title = ?,
+        excerpt = ?,
+        content = ?,
+        featuredImage = ?,
+        categoryId = ?,
+        status = ?,
+        featured = ?,
+        metaTitle = ?,
+        metaDescription = ?,
+        keywords = ?,
+        readTime = ?,
+        updatedAt = ?,
+        publishedAt = CASE 
+          WHEN ? = 'PUBLISHED' AND publishedAt IS NULL THEN ?
+          ELSE publishedAt
+        END
+      WHERE slug = ?
+    `;
+
+    const args = [
+      validatedData.title,
+      validatedData.excerpt,
+      validatedData.content,
+      validatedData.featuredImage || null,
+      processedBody.categoryId,
+      validatedData.status,
+      validatedData.featured ? 1 : 0,
+      validatedData.metaTitle || null,
+      validatedData.metaDescription || null,
+      JSON.stringify(validatedData.keywords || []),
+      Number(processedBody.readTime),
+      now,
+      validatedData.status,
+      now,
+      params.slug,
+    ];
+
+    const result = await turso.execute({ sql, args });
+    
+    if (result.rowsAffected === 0) {
+      throw new Error('Post not found or no changes made');
+    }
+
+    console.log('✅ Turso update successful, rows affected:', result.rowsAffected);
+
+    // Return the updated post
+    const updatedPost = await getBlogPostBySlug(params.slug);
+    
+    if (!updatedPost) {
+      throw new Error('Failed to retrieve updated post');
+    }
+
+    return NextResponse.json({
+      ...updatedPost,
+      status: updatedPost.status || validatedData.status
+    });
 
   } catch (error) {
-    console.error('Error updating blog post:', error);
+    console.error('❌ PUT /api/blog/[slug] error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Unique constraint')) {
+        return NextResponse.json(
+          { error: 'A post with this slug already exists', details: error.message },
+          { status: 409 }
+        );
+      }
+      
+      if (error.message.includes('SQLITE_ERROR')) {
+        return NextResponse.json(
+          { error: 'Database error - check if categories and users exist', details: error.message },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json(
-      { error: 'Failed to update blog post' },
+      { error: 'Failed to update blog post', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/blog/[slug] - Delete existing post by slug
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { slug: string } }
+) {
+  try {
+    console.log('🗑️ DELETE /api/blog/[slug] - Deleting post:', params.slug);
+
+    // Check if post exists first
+    const existingPost = await getBlogPostBySlug(params.slug);
+    if (!existingPost) {
+      return NextResponse.json(
+        { error: 'Post not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get the post ID first
+    const postResult = await turso.execute({
+      sql: 'SELECT id FROM BlogPost WHERE slug = ?',
+      args: [params.slug]
+    });
+
+    if (postResult.rows.length === 0) {
+      throw new Error('Post not found');
+    }
+
+    const postId = String(postResult.rows[0].id);
+    console.log('🔍 Deleting post with ID:', postId);
+
+    // Delete the blog post from Turso
+    const deleteResult = await turso.execute({
+      sql: 'DELETE FROM BlogPost WHERE slug = ?',
+      args: [params.slug]
+    });
+
+    if (deleteResult.rowsAffected === 0) {
+      throw new Error('Post not found or already deleted');
+    }
+
+    console.log('✅ Turso delete successful, rows affected:', deleteResult.rowsAffected);
+
+    return NextResponse.json(
+      { message: 'Post deleted successfully', slug: params.slug },
+      { status: 200 }
+    );
+
+  } catch (error) {
+    console.error('❌ DELETE /api/blog/[slug] error:', error);
+    
+    return NextResponse.json(
+      { error: 'Failed to delete post', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }
