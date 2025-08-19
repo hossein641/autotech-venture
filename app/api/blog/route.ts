@@ -88,13 +88,6 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Blog API POST - Starting request processing');
 
     // TEMPORARY: Bypass authentication for testing
-    // Comment this back in after testing:
-    // const user = await getUserFromRequest(request);
-    // if (!user) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
-
-    // Create a default user for testing
     const user = {
       id: 'user_admin_1',
       email: 'admin@atechv.com',
@@ -103,27 +96,60 @@ export async function POST(request: NextRequest) {
     };
 
     const body = await request.json();
-    console.log('🔍 Blog API POST - Request body:', body);
+    console.log('🔍 Blog API POST - Request body:', JSON.stringify(body, null, 2));
 
-    // Validate the incoming data
-    const validatedData = blogPostSchema.parse(body);
-    console.log('🔍 Blog API POST - Validated data:', validatedData);
+    // Basic validation without Zod for now
+    if (!body.title || !body.excerpt || !body.content) {
+      return NextResponse.json(
+        { 
+          error: 'Missing required fields',
+          details: 'Title, excerpt, and content are required',
+          received: {
+            title: !!body.title,
+            excerpt: !!body.excerpt,
+            content: !!body.content
+          }
+        },
+        { status: 400 }
+      );
+    }
 
     // Generate slug from title if not provided
-    const slug = body.slug || generateSlug(validatedData.title);
+    const slug = body.slug || body.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+
+    console.log('🔍 Generated slug:', slug);
 
     // Check if slug already exists - use unified database
     const USE_TURSO = process.env.DATABASE_URL?.startsWith('libsql://') || 
                       process.env.NODE_ENV === 'production';
 
+    console.log('🔍 Using database:', USE_TURSO ? 'Turso' : 'Prisma');
+
     let existingPost;
     if (USE_TURSO) {
-      const { turso } = await import('@/lib/turso');
-      const result = await turso.execute({
-        sql: 'SELECT id FROM BlogPost WHERE slug = ? LIMIT 1',
-        args: [slug]
-      });
-      existingPost = result.rows.length > 0 ? { id: result.rows[0].id } : null;
+      try {
+        const { turso } = await import('@/lib/turso');
+        const result = await turso.execute({
+          sql: 'SELECT id FROM BlogPost WHERE slug = ? LIMIT 1',
+          args: [slug]
+        });
+        existingPost = result.rows.length > 0 ? { id: result.rows[0].id } : null;
+        console.log('🔍 Turso slug check result:', existingPost);
+      } catch (tursoError) {
+        console.error('❌ Turso slug check error:', tursoError);
+        return NextResponse.json(
+          { 
+            error: 'Database connection error',
+            details: tursoError instanceof Error ? tursoError.message : 'Unknown database error'
+          },
+          { status: 500 }
+        );
+      }
     } else {
       existingPost = await prisma.blogPost.findUnique({
         where: { slug },
@@ -133,15 +159,15 @@ export async function POST(request: NextRequest) {
 
     if (existingPost) {
       return NextResponse.json(
-        { error: 'A post with this title already exists' },
+        { error: 'A post with this title already exists', slug },
         { status: 400 }
       );
     }
 
-    // Calculate read time
-    const readTime = calculateReadTime(validatedData.content);
+    // Calculate read time (200 words per minute)
+    const readTime = Math.max(1, Math.ceil(body.content.split(' ').length / 200));
 
-    // Get default category ID (you'll need to create these in your database)
+    // Get category ID mapping
     const categoryMapping: Record<string, string> = {
       'AI Solutions': 'cat_ai_solutions_1755215496487',
       'SEO Services': 'cat_seo_services_1755215496488', 
@@ -149,45 +175,54 @@ export async function POST(request: NextRequest) {
       'Automation': 'cat_automation_1755215496490'
     };
 
-    const categoryId = body.categoryId || categoryMapping[body.category || 'AI Solutions'] || 'cat_ai_solutions_1755215496487';
+    const categoryId = body.categoryId || categoryMapping[body.category] || categoryMapping['AI Solutions'];
+    console.log('🔍 Category mapping:', { category: body.category, categoryId });
 
     // Prepare post data
     const postData = {
-      title: validatedData.title,
+      title: body.title,
       slug,
-      excerpt: validatedData.excerpt,
-      content: validatedData.content,
-      featuredImage: validatedData.featuredImage || null,
+      excerpt: body.excerpt,
+      content: body.content,
+      featuredImage: body.featuredImage || null,
       authorId: user.id,
       categoryId: categoryId,
-      featured: validatedData.featured || false,
-      status: validatedData.status || 'DRAFT',
-      publishedAt: validatedData.status === 'PUBLISHED' 
-        ? validatedData.publishedAt ? new Date(validatedData.publishedAt).toISOString() : new Date().toISOString()
+      featured: body.featured || false,
+      status: body.status || 'DRAFT',
+      publishedAt: body.status === 'PUBLISHED' 
+        ? (body.publishedAt ? new Date(body.publishedAt).toISOString() : new Date().toISOString())
         : null,
       readTime,
-      metaTitle: validatedData.metaTitle || null,
-      metaDescription: validatedData.metaDescription || null,
-      keywords: validatedData.keywords || [],
-      tagIds: validatedData.tagIds || []
+      metaTitle: body.metaTitle || null,
+      metaDescription: body.metaDescription || null,
+      keywords: Array.isArray(body.keywords) ? body.keywords : [],
+      tagIds: Array.isArray(body.tagIds) ? body.tagIds : []
     };
 
-    console.log('🔍 Blog API POST - Final post data:', postData);
+    console.log('🔍 Blog API POST - Final post data:', JSON.stringify(postData, null, 2));
 
     // Use unified database module for creation
-    const result = await createBlogPost(postData);
+    try {
+      const result = await createBlogPost(postData);
+      console.log('🔍 createBlogPost result:', result);
 
-    console.log('🔍 Blog API POST Response:', { 
-      success: true,
-      postId: result.id,
-      title: result.title,
-      slug: result.slug
-    });
+      return NextResponse.json({ 
+        success: true,
+        post: result,
+        message: 'Blog post created successfully'
+      }, { status: 201 });
 
-    return NextResponse.json({ 
-      post: result,
-      message: 'Blog post created successfully'
-    }, { status: 201 });
+    } catch (createError) {
+      console.error('❌ Error in createBlogPost:', createError);
+      return NextResponse.json(
+        { 
+          error: 'Failed to create blog post in database',
+          details: createError instanceof Error ? createError.message : 'Unknown database error',
+          stack: process.env.NODE_ENV === 'development' && createError instanceof Error ? createError.stack : undefined
+        },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('❌ Blog API POST Error:', error);

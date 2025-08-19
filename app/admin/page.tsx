@@ -35,14 +35,14 @@ interface PostFormData {
   title: string;
   excerpt: string;
   content: string;
-  featuredImage?: string;
+  featuredImage: string;
   category: string;
-  categoryId?: string;
+  categoryId: string;
   tags: string[];
   featured: boolean;
   status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-  metaTitle?: string;
-  metaDescription?: string;
+  metaTitle: string;
+  metaDescription: string;
   keywords: string[];
 }
 
@@ -172,6 +172,20 @@ const AutoTechCMS: React.FC = () => {
       setLoading(true);
       console.log('🔍 Creating post via API:', postData);
 
+      // Enhanced validation
+      if (!postData.title?.trim()) {
+        alert('Title is required');
+        return;
+      }
+      if (!postData.excerpt?.trim()) {
+        alert('Excerpt is required');
+        return;
+      }
+      if (!postData.content?.trim()) {
+        alert('Content is required');
+        return;
+      }
+
       // Generate slug from title
       const slug = postData.title
         .toLowerCase()
@@ -188,11 +202,13 @@ const AutoTechCMS: React.FC = () => {
         featuredImage: postData.featuredImage || null,
         featured: postData.featured,
         status: postData.status,
-        metaTitle: postData.metaTitle,
-        metaDescription: postData.metaDescription,
-        keywords: postData.keywords,
-        categoryId: postData.categoryId || 'cat_default', // You'll need to map category names to IDs
-        tagIds: [], // You'll need to implement tag mapping
+        metaTitle: postData.metaTitle || null,
+        metaDescription: postData.metaDescription || null,
+        keywords: postData.keywords || [],
+        category: postData.category,
+        categoryId: postData.categoryId,
+        tags: postData.tags || [],
+        tagIds: [], // You'll need to implement tag mapping later
         publishedAt: postData.status === 'PUBLISHED' ? new Date().toISOString() : null
       };
 
@@ -206,6 +222,9 @@ const AutoTechCMS: React.FC = () => {
         body: JSON.stringify(requestData),
       });
 
+      console.log('🔍 Response status:', response.status);
+      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+
       const result = await response.json();
       
       console.log('🔍 API Response:', result);
@@ -213,14 +232,20 @@ const AutoTechCMS: React.FC = () => {
       if (response.ok) {
         console.log('✅ Post created successfully');
         await loadPosts(); // Reload posts to see the new one
-        alert(`Post "${postData.title}" created successfully!`);
+        alert(`✅ Post "${postData.title}" created successfully!`);
       } else {
         console.error('❌ API Error:', result);
-        alert(`Error creating post: ${result.error || 'Unknown error'}`);
+        
+        // Show detailed error information
+        const errorMessage = result.error || 'Unknown error';
+        const errorDetails = result.details || '';
+        const fullError = errorDetails ? `${errorMessage}\n\nDetails: ${errorDetails}` : errorMessage;
+        
+        alert(`❌ Error creating post:\n${fullError}`);
       }
     } catch (error) {
-      console.error('❌ Error creating post:', error);
-      alert(`Error creating post: ${error}`);
+      console.error('❌ Network/Parse Error:', error);
+      alert(`❌ Network error: ${error}`);
     } finally {
       setLoading(false);
     }
@@ -275,7 +300,7 @@ const AutoTechCMS: React.FC = () => {
       content: post?.content || '',
       featuredImage: post?.featuredImage || '',
       category: post?.category || 'AI Solutions',
-      categoryId: 'cat_ai_solutions', // Default category ID
+      categoryId: 'cat_ai_solutions_1755215496487', // Updated IDs
       tags: post?.tags || [],
       featured: post?.featured || false,
       status: post?.status || 'DRAFT',
@@ -377,6 +402,23 @@ const AutoTechCMS: React.FC = () => {
                 />
               </div>
 
+              {/* Featured Image URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Featured Image URL
+                </label>
+                <input
+                  type="url"
+                  value={formData.featuredImage}
+                  onChange={(e) => setFormData({ ...formData, featuredImage: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Optional: URL to the featured image for this post
+                </p>
+              </div>
+
               {/* Category */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -386,15 +428,15 @@ const AutoTechCMS: React.FC = () => {
                   value={formData.category}
                   onChange={(e) => {
                     const categoryMap: Record<string, string> = {
-                      'AI Solutions': 'cat_ai_solutions',
-                      'SEO Services': 'cat_seo_services',
-                      'Web Development': 'cat_web_development',
-                      'Automation': 'cat_automation'
+                      'AI Solutions': 'cat_ai_solutions_1755215496487',
+                      'SEO Services': 'cat_seo_services_1755215496488',
+                      'Web Development': 'cat_web_development_1755215496489',
+                      'Automation': 'cat_automation_1755215496490'
                     };
                     setFormData({ 
                       ...formData, 
                       category: e.target.value,
-                      categoryId: categoryMap[e.target.value] || 'cat_ai_solutions'
+                      categoryId: categoryMap[e.target.value] || 'cat_ai_solutions_1755215496487'
                     });
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -406,34 +448,218 @@ const AutoTechCMS: React.FC = () => {
                 </select>
               </div>
 
-              {/* Status */}
+              {/* Tags */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
+                  Tags (comma-separated)
                 </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' })}
+                <input
+                  type="text"
+                  value={formData.tags.join(', ')}
+                  onChange={(e) => {
+                    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    setFormData({ ...formData, tags });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="DRAFT">Draft</option>
-                  <option value="PUBLISHED">Published</option>
-                  <option value="ARCHIVED">Archived</option>
-                </select>
+                  placeholder="AI, automation, business, Dayton"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Enter tags separated by commas
+                </p>
               </div>
 
-              {/* Featured */}
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  checked={formData.featured}
-                  onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
-                  Featured post
+              {/* SEO Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">SEO Settings</h3>
+                
+                {/* Meta Title */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Meta Title (SEO)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.metaTitle}
+                    onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="SEO-optimized title for search engines"
+                    maxLength={60}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    {(formData.metaTitle || '').length}/60 characters
+                  </p>
+                </div>
+
+                {/* Meta Description */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Meta Description (SEO)
+                  </label>
+                  <textarea
+                    value={formData.metaDescription}
+                    onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Brief description for search engine results"
+                    maxLength={160}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    {(formData.metaDescription || '').length}/160 characters
+                  </p>
+                </div>
+
+                {/* Keywords */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SEO Keywords (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.keywords.join(', ')}
+                    onChange={(e) => {
+                      const keywords = e.target.value.split(',').map(keyword => keyword.trim()).filter(keyword => keyword);
+                      setFormData({ ...formData, keywords });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="AI automation, small business, Dayton Ohio"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Keywords for SEO optimization
+                  </p>
+                </div>
+              </div>
+
+              {/* Featured Image URL */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Featured Image URL
                 </label>
+                <input
+                  type="url"
+                  value={formData.featuredImage}
+                  onChange={(e) => setFormData({ ...formData, featuredImage: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="https://example.com/image.jpg"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Optional: URL to the featured image for this post
+                </p>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tags.join(', ')}
+                  onChange={(e) => {
+                    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                    setFormData({ ...formData, tags });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="AI, automation, business, Dayton"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Enter tags separated by commas
+                </p>
+              </div>
+
+              {/* SEO Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">SEO Settings</h3>
+                
+                {/* Meta Title */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Meta Title (SEO)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.metaTitle}
+                    onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="SEO-optimized title for search engines"
+                    maxLength={60}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    {formData.metaTitle.length}/60 characters
+                  </p>
+                </div>
+
+                {/* Meta Description */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Meta Description (SEO)
+                  </label>
+                  <textarea
+                    value={formData.metaDescription}
+                    onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Brief description for search engine results"
+                    maxLength={160}
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    {formData.metaDescription.length}/160 characters
+                  </p>
+                </div>
+
+                {/* Keywords */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    SEO Keywords (comma-separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.keywords.join(', ')}
+                    onChange={(e) => {
+                      const keywords = e.target.value.split(',').map(keyword => keyword.trim()).filter(keyword => keyword);
+                      setFormData({ ...formData, keywords });
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="AI automation, small business, Dayton Ohio"
+                  />
+                  <p className="mt-1 text-sm text-gray-500">
+                    Keywords for SEO optimization
+                  </p>
+                </div>
+              </div>
+
+              {/* Status and Featured Section */}
+              <div className="border-t pt-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Publishing Options</h3>
+                
+                {/* Status */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Status
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="DRAFT">Draft</option>
+                    <option value="PUBLISHED">Published</option>
+                    <option value="ARCHIVED">Archived</option>
+                  </select>
+                </div>
+
+                {/* Featured */}
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="featured"
+                    checked={formData.featured}
+                    onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                    className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <label htmlFor="featured" className="ml-2 block text-sm text-gray-700">
+                    Featured post (appears prominently on homepage)
+                  </label>
+                </div>
               </div>
 
               {/* Action Buttons */}
