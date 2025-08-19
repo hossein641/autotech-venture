@@ -461,7 +461,7 @@ export async function getBlogPostBySlug(slug: string) {
       FROM BlogPost bp
       LEFT JOIN User u ON bp.authorId = u.id
       LEFT JOIN Category c ON bp.categoryId = c.id
-      WHERE (bp.slug = ? OR bp.id = ?) AND bp.status = 'PUBLISHED'
+      WHERE (bp.slug = ? OR bp.id = ?) 
       LIMIT 1
     `;
     
