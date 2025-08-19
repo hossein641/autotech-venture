@@ -8,9 +8,9 @@ export const blogPostSchema = z.object({
   excerpt: z.string().min(50, 'Excerpt must be at least 50 characters').max(300, 'Excerpt must be less than 300 characters'),
   content: z.string().min(100, 'Content must be at least 100 characters'),
   featuredImage: z.string().url('Featured image must be a valid URL').optional().or(z.literal('')),
-  categoryId: z.string().cuid('Invalid category ID'),
-  authorId: z.string().cuid('Invalid author ID').optional(), // ADDED: authorId field
-  tagIds: z.array(z.string().cuid()).optional(),
+  categoryId: z.string().min(1, 'Category ID is required'), // FIXED: Remove CUID requirement
+  authorId: z.string().min(1, 'Author ID is required').optional(), // FIXED: Remove CUID requirement
+  tagIds: z.array(z.string().min(1)).optional(), // FIXED: Remove CUID requirement
   featured: z.boolean().optional().default(false),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional().default('DRAFT'),
   publishedAt: z.string().datetime().optional(),
@@ -31,7 +31,7 @@ export const blogFiltersSchema = z.object({
   tag: z.string().optional(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).optional(),
   featured: z.boolean().optional(),
-  authorId: z.string().cuid().optional(),
+  authorId: z.string().min(1).optional(), // FIXED: Remove CUID requirement
   page: z.coerce.number().int().positive().optional().default(1),
   limit: z.coerce.number().int().positive().max(100).optional().default(10),
   sortBy: z.enum(['publishedAt', 'createdAt', 'title', 'updatedAt']).optional().default('publishedAt'),
