@@ -73,9 +73,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 POST /api/blog - Creating new blog post');
+    console.log('🚀 REQUEST HEADERS:', Object.fromEntries(request.headers.entries()));
+
     
     // Parse request body
     const body = await request.json();
+    console.log('📝 RAW REQUEST BODY:', body);
+    console.log('📝 REQUEST BODY STRINGIFIED:', JSON.stringify(body, null, 2));
+    console.log('📝 REQUEST BODY KEYS:', Object.keys(body));
+    console.log('📝 REQUEST BODY TYPES:', Object.fromEntries(
+      Object.entries(body).map(([key, value]) => [key, typeof value])
+    ));
     console.log('📝 Request body received:', {
       title: body.title,
       status: body.status,

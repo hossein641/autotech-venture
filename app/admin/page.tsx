@@ -56,6 +56,7 @@ interface User {
   role: string;
 }
 
+
 // Main Admin Component
 const AutoTechCMS: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -168,88 +169,168 @@ const AutoTechCMS: React.FC = () => {
     }
   };
 
-  // Create new post via API
-  const createPost = async (postData: PostFormData): Promise<void> => {
-    try {
-      setLoading(true);
-      console.log('🔍 Creating post via API:', postData);
 
-      // Enhanced validation
-      if (!postData.title?.trim()) {
-        alert('Title is required');
-        return;
-      }
-      if (!postData.excerpt?.trim() || postData.excerpt.length < 50) {
-        alert('Excerpt is required and must be at least 50 characters');
-        return;
-      }
-      if (!postData.content?.trim() || postData.content.length < 100) {
-        alert('Content is required and must be at least 100 characters');
-        return;
-      }
+// 1. ENHANCED ADMIN PAGE DEBUG VERSION
+// Replace your entire createPost function with this:
 
-      // Generate slug from title
-      const slug = postData.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
+const createPost = async (postData: PostFormData): Promise<void> => {
+  try {
+    setLoading(true);
+    console.log('🔍 RAW FORM DATA:', postData);
 
-      const requestData = {
-        title: postData.title,
-        slug: slug,
-        excerpt: postData.excerpt,
-        content: postData.content,
-        featuredImage: postData.featuredImage || null,
-        featured: postData.featured,
-        status: postData.status,
-        metaTitle: postData.metaTitle || null,
-        metaDescription: postData.metaDescription || null,
-        keywords: postData.keywords || [],
-        category: postData.category,
-        categoryId: postData.categoryId,
-        tags: postData.tags || [],
-        tagIds: [], // You'll need to implement tag mapping later
-        publishedAt: postData.status === 'PUBLISHED' ? new Date().toISOString() : null
-      };
-
-      console.log('🔍 Sending to API:', requestData);
-
-      const response = await fetch('/api/blog', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestData),
-      });
-
-      console.log('🔍 Response status:', response.status);
-
-      const result = await response.json();
-      console.log('🔍 API Response:', result);
-
-      if (response.ok) {
-        console.log('✅ Post created successfully');
-        await loadPosts(); // Reload posts to see the new one
-        alert(`✅ Post "${postData.title}" created successfully!`);
-      } else {
-        console.error('❌ API Error:', result);
-        
-        // Show detailed error information
-        const errorMessage = result.error || 'Unknown error';
-        const errorDetails = result.details || '';
-        const fullError = errorDetails ? `${errorMessage}\n\nDetails: ${errorDetails}` : errorMessage;
-        
-        alert(`❌ Error creating post:\n${fullError}`);
-      }
-    } catch (error) {
-      console.error('❌ Network/Parse Error:', error);
-      alert(`❌ Network error: ${error}`);
-    } finally {
-      setLoading(false);
+    // Enhanced validation with proper length checks
+    if (!postData.title?.trim() || postData.title.length < 10) {
+      alert('Title is required and must be at least 10 characters');
+      return;
     }
-  };
+    if (postData.title.length > 500) {
+      alert('Title must be less than 500 characters');
+      return;
+    }
+    if (!postData.excerpt?.trim() || postData.excerpt.length < 50) {
+      alert('Excerpt is required and must be at least 50 characters');
+      return;
+    }
+    if (postData.excerpt.length > 300) {
+      alert('Excerpt must be less than 300 characters');
+      return;
+    }
+    if (!postData.content?.trim() || postData.content.length < 100) {
+      alert('Content is required and must be at least 100 characters');
+      return;
+    }
+
+    // Generate slug from title
+    const slug = postData.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim();
+
+    // Category name to ID mapping (correct production IDs)
+    const getCategoryId = (categoryName: string): string => {
+      const categoryMap: Record<string, string> = {
+        'AI Solutions': 'cat_ai',
+        'SEO Services': 'cat_seo',
+        'Web Development': 'cat_web',
+        'Automation': 'cat_auto'
+      };
+      const result = categoryMap[categoryName] || 'cat_ai';
+      console.log(`🔍 CATEGORY MAPPING: "${categoryName}" → "${result}"`);
+      return result;
+    };
+
+    // Calculate read time (1 word per 200ms = ~300 words per minute)
+    const calculateReadTime = (content: string): number => {
+      const words = content.trim().split(/\s+/).length;
+      return Math.max(1, Math.ceil(words / 300));
+    };
+
+    // EXACT FORMAT THAT WORKS IN CURL
+    const requestData : any = {
+      title: postData.title.trim(),
+      excerpt: postData.excerpt.trim(),
+      content: postData.content.trim(),
+      categoryId: getCategoryId(postData.category), // Direct ID, not name
+      authorId: 'author_hossein_1755215496184',
+      status: postData.status || 'DRAFT'
+    };
+
+    // Add optional fields only if they have values
+    if (postData.featuredImage?.trim()) {
+      requestData.featuredImage = postData.featuredImage.trim();
+    }
+    if (postData.metaTitle?.trim()) {
+      requestData.metaTitle = postData.metaTitle.trim();
+    }
+    if (postData.metaDescription?.trim()) {
+      requestData.metaDescription = postData.metaDescription.trim();
+    }
+    if (postData.keywords && postData.keywords.length > 0) {
+      requestData.keywords = postData.keywords.filter(k => k.trim());
+    }
+    if (postData.featured) {
+      requestData.featured = true;
+    }
+
+    console.log('🔍 FINAL REQUEST DATA (MATCHES CURL):', requestData);
+    console.log('🔍 REQUEST DATA STRINGIFIED:', JSON.stringify(requestData, null, 2));
+
+    const response = await fetch('/api/blog', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestData),
+    });
+
+    console.log('🔍 Response status:', response.status);
+    console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
+
+    // Get response text first to see raw response
+    const responseText = await response.text();
+    console.log('🔍 RAW RESPONSE TEXT:', responseText);
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      console.error('❌ FAILED TO PARSE RESPONSE JSON:', e);
+      alert(`❌ Invalid JSON response: ${responseText}`);
+      return;
+    }
+
+    console.log('🔍 PARSED API RESPONSE:', result);
+
+    if (response.ok) {
+      console.log('✅ Post created successfully');
+      await loadPosts();
+      alert(`✅ Post "${postData.title}" created successfully!`);
+    } else {
+      console.error('❌ API Error:', result);
+      
+      // Enhanced error display
+      const errorMessage = result.error || 'Unknown error';
+      let errorDetails = '';
+      
+      if (result.details && typeof result.details === 'object') {
+        console.log('🔍 DETAILED VALIDATION ERRORS:', result.details);
+        
+        // Format validation errors nicely
+        const formatValidationErrors = (details: any, path = '') => {
+          let formatted = '';
+          for (const [key, value] of Object.entries(details)) {
+            const currentPath = path ? `${path}.${key}` : key;
+            if (typeof value === 'object' && value !== null) {
+              if (Array.isArray(value)) {
+                formatted += `${currentPath}: ${value.join(', ')}\n`;
+              } else {
+                formatted += formatValidationErrors(value, currentPath);
+              }
+            } else {
+              formatted += `${currentPath}: ${value}\n`;
+            }
+          }
+          return formatted;
+        };
+        
+        errorDetails = formatValidationErrors(result.details);
+      } else if (result.details) {
+        errorDetails = result.details;
+      }
+      
+      const fullError = errorDetails ? `${errorMessage}\n\nValidation Errors:\n${errorDetails}` : errorMessage;
+      alert(`❌ Error creating post:\n${fullError}`);
+    }
+  } catch (error) {
+    console.error('❌ NETWORK/PARSE ERROR:', error);
+    alert(`❌ Network error: ${error}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   // UPDATE POST FUNCTION - FIXED VALIDATION ISSUES
   const updatePost = async (postId: string, postData: PostFormData): Promise<void> => {
