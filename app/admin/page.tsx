@@ -249,19 +249,27 @@ const AutoTechCMS: React.FC = () => {
     }
   };
 
-  // UPDATE POST FUNCTION - NOW CONNECTS TO WORKING PUT API
+  // UPDATE POST FUNCTION - FIXED VALIDATION ISSUES
   const updatePost = async (postId: string, postData: PostFormData): Promise<void> => {
     try {
       setLoading(true);
       console.log('🔧 Updating post via API:', { postId, postData });
 
-      // Enhanced validation
-      if (!postData.title?.trim()) {
-        alert('Title is required');
+      // Enhanced validation with proper length checks
+      if (!postData.title?.trim() || postData.title.length < 10) {
+        alert('Title is required and must be at least 10 characters');
+        return;
+      }
+      if (postData.title.length > 500) {
+        alert('Title must be less than 500 characters');
         return;
       }
       if (!postData.excerpt?.trim() || postData.excerpt.length < 50) {
         alert('Excerpt is required and must be at least 50 characters');
+        return;
+      }
+      if (postData.excerpt.length > 300) {
+        alert('Excerpt must be less than 300 characters');
         return;
       }
       if (!postData.content?.trim() || postData.content.length < 100) {
@@ -276,20 +284,45 @@ const AutoTechCMS: React.FC = () => {
         return;
       }
 
+      // Category name to ID mapping (correct production IDs)
+      const getCategoryId = (categoryName: string): string => {
+        const categoryMap: Record<string, string> = {
+          'AI Solutions': 'cat_ai',
+          'SEO Services': 'cat_seo',
+          'Web Development': 'cat_web',
+          'Automation': 'cat_auto'
+        };
+        return categoryMap[categoryName] || 'cat_ai';
+      };
+
+      // Calculate read time (1 word per 200ms = ~300 words per minute)
+      const calculateReadTime = (content: string): number => {
+        const words = content.trim().split(/\s+/).length;
+        return Math.max(1, Math.ceil(words / 300));
+      };
+
+      // Format data exactly as API expects for UPDATE
       const requestData = {
-        title: postData.title,
-        excerpt: postData.excerpt,
-        content: postData.content,
-        featuredImage: postData.featuredImage || null,
-        featured: postData.featured || false,
+        title: postData.title.trim(),
+        excerpt: postData.excerpt.trim(),
+        content: postData.content.trim(),
+        featuredImage: postData.featuredImage?.trim() || '',
+        categoryId: getCategoryId(postData.category),
+        authorId: 'author_hossein_1755215496184', // Fixed author ID
+        featured: Boolean(postData.featured),
         status: postData.status || 'DRAFT',
-        metaTitle: postData.metaTitle || null,
-        metaDescription: postData.metaDescription || null,
-        keywords: postData.keywords || [],
-        category: postData.category,
+        metaTitle: postData.metaTitle?.trim() || '',
+        metaDescription: postData.metaDescription?.trim() || '',
+        keywords: Array.isArray(postData.keywords) ? postData.keywords.filter(k => k.trim()) : [],
+        readTime: calculateReadTime(postData.content),
+        // Don't send slug in update - let API handle it
+        publishedAt: postData.status === 'PUBLISHED' && existingPost.status !== 'PUBLISHED' 
+          ? new Date().toISOString() 
+          : undefined
       };
 
       console.log('🔍 Sending PUT request to:', `/api/blog/${existingPost.slug}`);
+      console.log('🔍 Update data (formatted):', requestData);
 
       const response = await fetch(`/api/blog/${existingPost.slug}`, {
         method: 'PUT',
@@ -310,10 +343,18 @@ const AutoTechCMS: React.FC = () => {
         alert(`✅ Post "${postData.title}" updated successfully!`);
       } else {
         console.error('❌ Update API Error:', result);
+        
         const errorMessage = result.error || 'Unknown error';
-        const errorDetails = result.details || '';
-        const fullError = errorDetails ? `${errorMessage}: ${JSON.stringify(errorDetails)}` : errorMessage;
-        alert(`❌ Update failed: ${fullError}`);
+        let errorDetails = '';
+        
+        if (result.details && typeof result.details === 'object') {
+          errorDetails = JSON.stringify(result.details, null, 2);
+        } else if (result.details) {
+          errorDetails = result.details;
+        }
+        
+        const fullError = errorDetails ? `${errorMessage}\n\nValidation Details:\n${errorDetails}` : errorMessage;
+        alert(`❌ Update failed:\n${fullError}`);
       }
 
     } catch (error) {
@@ -411,17 +452,33 @@ const AutoTechCMS: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      // Enhanced validation
-      if (!formData.title.trim()) {
-        alert('Title is required');
+      // Enhanced validation matching API requirements
+      if (!formData.title.trim() || formData.title.length < 10) {
+        alert('Title is required and must be at least 10 characters');
+        return;
+      }
+      if (formData.title.length > 500) {
+        alert('Title must be less than 500 characters');
         return;
       }
       if (!formData.excerpt.trim() || formData.excerpt.length < 50) {
         alert('Excerpt is required and must be at least 50 characters');
         return;
       }
+      if (formData.excerpt.length > 300) {
+        alert('Excerpt must be less than 300 characters');
+        return;
+      }
       if (!formData.content.trim() || formData.content.length < 100) {
         alert('Content is required and must be at least 100 characters');
+        return;
+      }
+      if (formData.metaTitle && formData.metaTitle.length > 60) {
+        alert('Meta title must be less than 60 characters');
+        return;
+      }
+      if (formData.metaDescription && formData.metaDescription.length > 160) {
+        alert('Meta description must be less than 160 characters');
         return;
       }
 
@@ -441,7 +498,7 @@ const AutoTechCMS: React.FC = () => {
               {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Title *
+                  Title * (10-500 characters)
                 </label>
                 <input
                   type="text"
@@ -450,7 +507,18 @@ const AutoTechCMS: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Enter post title..."
                   required
+                  minLength={10}
+                  maxLength={500}
                 />
+                <p className={`mt-1 text-sm ${
+                  formData.title.length < 10 
+                    ? 'text-red-500' 
+                    : formData.title.length > 500 
+                    ? 'text-red-500' 
+                    : 'text-green-600'
+                }`}>
+                  {formData.title.length}/500 characters (minimum 10)
+                </p>
               </div>
 
               {/* Slug (auto-generated, read-only) */}
@@ -474,7 +542,7 @@ const AutoTechCMS: React.FC = () => {
               {/* Excerpt */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Excerpt * (minimum 50 characters)
+                  Excerpt * (50-300 characters)
                 </label>
                 <textarea
                   value={formData.excerpt}
@@ -483,9 +551,17 @@ const AutoTechCMS: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Brief description of the post..."
                   required
+                  minLength={50}
+                  maxLength={300}
                 />
-                <p className="mt-1 text-sm text-gray-500">
-                  {formData.excerpt.length}/50 characters minimum
+                <p className={`mt-1 text-sm ${
+                  formData.excerpt.length < 50 
+                    ? 'text-red-500' 
+                    : formData.excerpt.length > 300 
+                    ? 'text-red-500' 
+                    : 'text-green-600'
+                }`}>
+                  {formData.excerpt.length}/300 characters (minimum 50)
                 </p>
               </div>
 
@@ -501,9 +577,14 @@ const AutoTechCMS: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   placeholder="Write your post content here..."
                   required
+                  minLength={100}
                 />
-                <p className="mt-1 text-sm text-gray-500">
-                  {formData.content.length}/100 characters minimum
+                <p className={`mt-1 text-sm ${
+                  formData.content.length < 100 
+                    ? 'text-red-500' 
+                    : 'text-green-600'
+                }`}>
+                  {formData.content.length} characters (minimum 100)
                 </p>
               </div>
 
@@ -552,6 +633,9 @@ const AutoTechCMS: React.FC = () => {
                   <option value="Web Development">Web Development</option>
                   <option value="Automation">Automation</option>
                 </select>
+                <p className="mt-1 text-sm text-gray-500">
+                  Category ID: {formData.categoryId}
+                </p>
               </div>
 
               {/* Tags */}
@@ -591,7 +675,13 @@ const AutoTechCMS: React.FC = () => {
                     placeholder="SEO-optimized title for search engines"
                     maxLength={60}
                   />
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className={`mt-1 text-sm ${
+                    formData.metaTitle.length > 60 
+                      ? 'text-red-500' 
+                      : formData.metaTitle.length > 50 
+                      ? 'text-yellow-600' 
+                      : 'text-gray-500'
+                  }`}>
                     {formData.metaTitle.length}/60 characters
                   </p>
                 </div>
@@ -609,7 +699,13 @@ const AutoTechCMS: React.FC = () => {
                     placeholder="Brief description for search engine results"
                     maxLength={160}
                   />
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className={`mt-1 text-sm ${
+                    formData.metaDescription.length > 160 
+                      ? 'text-red-500' 
+                      : formData.metaDescription.length > 140 
+                      ? 'text-yellow-600' 
+                      : 'text-gray-500'
+                  }`}>
                     {formData.metaDescription.length}/160 characters
                   </p>
                 </div>
