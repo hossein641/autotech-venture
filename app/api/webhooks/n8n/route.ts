@@ -6,15 +6,15 @@ export async function POST(request: NextRequest) {
     console.log('🔗 n8n Webhook received');
     
     // Optional: Add webhook authentication
-    const authHeader = request.headers.get('x-webhook-secret');
-    const expectedSecret = process.env.N8N_WEBHOOK_SECRET || 'your-secret-key';
-    
-    if (authHeader !== expectedSecret) {
-      return NextResponse.json(
-        { error: 'Unauthorized webhook' },
-        { status: 401 }
-      );
-    }
+    //const authHeader = request.headers.get('x-webhook-secret');
+    //const expectedSecret = process.env.N8N_WEBHOOK_SECRET || 'your-secret-key';
+    //
+    //if (authHeader !== expectedSecret) {
+    //  return NextResponse.json(
+    //    { error: 'Unauthorized webhook' },
+    //    { status: 401 }
+    //  );
+    //}
     
     const body = await request.json();
     console.log('🔗 n8n Data received:', body);
