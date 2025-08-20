@@ -1,4 +1,4 @@
-// app/admin/page.tsx - Updated to use Database API
+// app/admin/page.tsx - Complete Updated Version with Working Edit/Delete
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -177,12 +177,12 @@ const AutoTechCMS: React.FC = () => {
         alert('Title is required');
         return;
       }
-      if (!postData.excerpt?.trim()) {
-        alert('Excerpt is required');
+      if (!postData.excerpt?.trim() || postData.excerpt.length < 50) {
+        alert('Excerpt is required and must be at least 50 characters');
         return;
       }
-      if (!postData.content?.trim()) {
-        alert('Content is required');
+      if (!postData.content?.trim() || postData.content.length < 100) {
+        alert('Content is required and must be at least 100 characters');
         return;
       }
 
@@ -223,10 +223,8 @@ const AutoTechCMS: React.FC = () => {
       });
 
       console.log('🔍 Response status:', response.status);
-      console.log('🔍 Response headers:', Object.fromEntries(response.headers.entries()));
 
       const result = await response.json();
-      
       console.log('🔍 API Response:', result);
 
       if (response.ok) {
@@ -251,41 +249,142 @@ const AutoTechCMS: React.FC = () => {
     }
   };
 
-  // Update existing post via API
+  // UPDATE POST FUNCTION - NOW CONNECTS TO WORKING PUT API
   const updatePost = async (postId: string, postData: PostFormData): Promise<void> => {
     try {
       setLoading(true);
-      console.log('🔍 Updating post via API:', { postId, postData });
+      console.log('🔧 Updating post via API:', { postId, postData });
 
-      // For now, just reload posts since update API might not be implemented
-      alert('Update functionality not yet implemented. Please create a new post instead.');
-      
+      // Enhanced validation
+      if (!postData.title?.trim()) {
+        alert('Title is required');
+        return;
+      }
+      if (!postData.excerpt?.trim() || postData.excerpt.length < 50) {
+        alert('Excerpt is required and must be at least 50 characters');
+        return;
+      }
+      if (!postData.content?.trim() || postData.content.length < 100) {
+        alert('Content is required and must be at least 100 characters');
+        return;
+      }
+
+      // Find the post to get its slug
+      const existingPost = posts.find(p => p.id === postId);
+      if (!existingPost) {
+        alert('Post not found in current list');
+        return;
+      }
+
+      const requestData = {
+        title: postData.title,
+        excerpt: postData.excerpt,
+        content: postData.content,
+        featuredImage: postData.featuredImage || null,
+        featured: postData.featured || false,
+        status: postData.status || 'DRAFT',
+        metaTitle: postData.metaTitle || null,
+        metaDescription: postData.metaDescription || null,
+        keywords: postData.keywords || [],
+        category: postData.category,
+      };
+
+      console.log('🔍 Sending PUT request to:', `/api/blog/${existingPost.slug}`);
+
+      const response = await fetch(`/api/blog/${existingPost.slug}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      console.log('🔍 PUT Response status:', response.status);
+
+      const result = await response.json();
+      console.log('🔍 PUT API Response:', result);
+
+      if (response.ok) {
+        console.log('✅ Post updated successfully');
+        await loadPosts(); // Reload posts to see the changes
+        alert(`✅ Post "${postData.title}" updated successfully!`);
+      } else {
+        console.error('❌ Update API Error:', result);
+        const errorMessage = result.error || 'Unknown error';
+        const errorDetails = result.details || '';
+        const fullError = errorDetails ? `${errorMessage}: ${JSON.stringify(errorDetails)}` : errorMessage;
+        alert(`❌ Update failed: ${fullError}`);
+      }
+
     } catch (error) {
-      console.error('❌ Error updating post:', error);
-      alert(`Error updating post: ${error}`);
+      console.error('❌ Update error:', error);
+      alert(`❌ Update error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // Delete post
+  // DELETE POST FUNCTION - NOW CONNECTS TO WORKING DELETE API
   const deletePost = async (postId: string): Promise<void> => {
-    if (confirm('Are you sure you want to delete this post?')) {
-      try {
-        setLoading(true);
-        console.log('🔍 Deleting post:', postId);
-        
-        // Remove from local state for now
-        setPosts(posts.filter(p => p.id !== postId));
-        alert('Post deleted (local only - implement API delete)');
-        
-      } catch (error) {
-        console.error('❌ Error deleting post:', error);
-        alert(`Error deleting post: ${error}`);
-      } finally {
-        setLoading(false);
+    try {
+      console.log('🗑️ Deleting post via API:', postId);
+
+      // Find the post to get its slug and title
+      const existingPost = posts.find(p => p.id === postId);
+      if (!existingPost) {
+        alert('Post not found in current list');
+        return;
       }
+
+      // Confirm deletion
+      const confirmed = confirm(`Are you sure you want to delete "${existingPost.title}"?\n\nThis action cannot be undone.`);
+      if (!confirmed) {
+        console.log('🚫 Delete cancelled by user');
+        return;
+      }
+
+      setLoading(true);
+
+      console.log('🔍 Sending DELETE request to:', `/api/blog/${existingPost.slug}`);
+
+      const response = await fetch(`/api/blog/${existingPost.slug}`, {
+        method: 'DELETE',
+      });
+
+      console.log('🔍 DELETE Response status:', response.status);
+
+      const result = await response.json();
+      console.log('🔍 DELETE API Response:', result);
+
+      if (response.ok) {
+        console.log('✅ Post deleted successfully');
+        await loadPosts(); // Reload posts to see the changes
+        alert(`✅ Post "${existingPost.title}" deleted successfully!`);
+      } else {
+        console.error('❌ Delete API Error:', result);
+        const errorMessage = result.error || 'Unknown error';
+        alert(`❌ Delete failed: ${errorMessage}`);
+      }
+
+    } catch (error) {
+      console.error('❌ Delete error:', error);
+      alert(`❌ Delete error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  // Handle Edit Button Click
+  const handleEdit = (post: BlogPost) => {
+    console.log('✏️ Handle edit for post:', post.title);
+    setEditingPost(post);
+    setShowPostEditor(true);
+  };
+
+  // Handle Delete Button Click
+  const handleDelete = async (post: BlogPost) => {
+    console.log('🗑️ Handle delete for post:', post.title);
+    await deletePost(post.id);
   };
 
   // Post Editor Component
@@ -300,7 +399,7 @@ const AutoTechCMS: React.FC = () => {
       content: post?.content || '',
       featuredImage: post?.featuredImage || '',
       category: post?.category || 'AI Solutions',
-      categoryId: 'cat_ai_solutions_1755215496487', // Updated IDs
+      categoryId: 'cat_ai', // Updated to use correct production IDs
       tags: post?.tags || [],
       featured: post?.featured || false,
       status: post?.status || 'DRAFT',
@@ -312,17 +411,17 @@ const AutoTechCMS: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       
-      // Validation
+      // Enhanced validation
       if (!formData.title.trim()) {
         alert('Title is required');
         return;
       }
-      if (!formData.excerpt.trim()) {
-        alert('Excerpt is required');
+      if (!formData.excerpt.trim() || formData.excerpt.length < 50) {
+        alert('Excerpt is required and must be at least 50 characters');
         return;
       }
-      if (!formData.content.trim()) {
-        alert('Content is required');
+      if (!formData.content.trim() || formData.content.length < 100) {
+        alert('Content is required and must be at least 100 characters');
         return;
       }
 
@@ -375,7 +474,7 @@ const AutoTechCMS: React.FC = () => {
               {/* Excerpt */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Excerpt *
+                  Excerpt * (minimum 50 characters)
                 </label>
                 <textarea
                   value={formData.excerpt}
@@ -385,12 +484,15 @@ const AutoTechCMS: React.FC = () => {
                   placeholder="Brief description of the post..."
                   required
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  {formData.excerpt.length}/50 characters minimum
+                </p>
               </div>
 
               {/* Content */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Content *
+                  Content * (minimum 100 characters)
                 </label>
                 <textarea
                   value={formData.content}
@@ -400,6 +502,9 @@ const AutoTechCMS: React.FC = () => {
                   placeholder="Write your post content here..."
                   required
                 />
+                <p className="mt-1 text-sm text-gray-500">
+                  {formData.content.length}/100 characters minimum
+                </p>
               </div>
 
               {/* Featured Image URL */}
@@ -427,16 +532,17 @@ const AutoTechCMS: React.FC = () => {
                 <select
                   value={formData.category}
                   onChange={(e) => {
+                    // Updated to use correct production category IDs
                     const categoryMap: Record<string, string> = {
-                      'AI Solutions': 'cat_ai_solutions_1755215496487',
-                      'SEO Services': 'cat_seo_services_1755215496488',
-                      'Web Development': 'cat_web_development_1755215496489',
-                      'Automation': 'cat_automation_1755215496490'
+                      'AI Solutions': 'cat_ai',
+                      'SEO Services': 'cat_seo',
+                      'Web Development': 'cat_web',
+                      'Automation': 'cat_auto'
                     };
                     setFormData({ 
                       ...formData, 
                       category: e.target.value,
-                      categoryId: categoryMap[e.target.value] || 'cat_ai_solutions_1755215496487'
+                      categoryId: categoryMap[e.target.value] || 'cat_ai'
                     });
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -446,104 +552,6 @@ const AutoTechCMS: React.FC = () => {
                   <option value="Web Development">Web Development</option>
                   <option value="Automation">Automation</option>
                 </select>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tags (comma-separated)
-                </label>
-                <input
-                  type="text"
-                  value={formData.tags.join(', ')}
-                  onChange={(e) => {
-                    const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
-                    setFormData({ ...formData, tags });
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="AI, automation, business, Dayton"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Enter tags separated by commas
-                </p>
-              </div>
-
-              {/* SEO Section */}
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">SEO Settings</h3>
-                
-                {/* Meta Title */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta Title (SEO)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.metaTitle}
-                    onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="SEO-optimized title for search engines"
-                    maxLength={60}
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    {(formData.metaTitle || '').length}/60 characters
-                  </p>
-                </div>
-
-                {/* Meta Description */}
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Meta Description (SEO)
-                  </label>
-                  <textarea
-                    value={formData.metaDescription}
-                    onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Brief description for search engine results"
-                    maxLength={160}
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    {(formData.metaDescription || '').length}/160 characters
-                  </p>
-                </div>
-
-                {/* Keywords */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    SEO Keywords (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.keywords.join(', ')}
-                    onChange={(e) => {
-                      const keywords = e.target.value.split(',').map(keyword => keyword.trim()).filter(keyword => keyword);
-                      setFormData({ ...formData, keywords });
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="AI automation, small business, Dayton Ohio"
-                  />
-                  <p className="mt-1 text-sm text-gray-500">
-                    Keywords for SEO optimization
-                  </p>
-                </div>
-              </div>
-
-              {/* Featured Image URL */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Featured Image URL
-                </label>
-                <input
-                  type="url"
-                  value={formData.featuredImage}
-                  onChange={(e) => setFormData({ ...formData, featuredImage: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  placeholder="https://example.com/image.jpg"
-                />
-                <p className="mt-1 text-sm text-gray-500">
-                  Optional: URL to the featured image for this post
-                </p>
               </div>
 
               {/* Tags */}
@@ -776,6 +784,7 @@ const AutoTechCMS: React.FC = () => {
               <button
                 onClick={() => setShowPostEditor(true)}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 mr-4"
+                disabled={loading}
               >
                 Create New Post
               </button>
@@ -803,6 +812,7 @@ const AutoTechCMS: React.FC = () => {
                   setShowPostEditor(true);
                 }}
                 className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center"
+                disabled={loading}
               >
                 <PlusIcon className="w-4 h-4 mr-2" />
                 New Post
@@ -811,7 +821,10 @@ const AutoTechCMS: React.FC = () => {
 
             {loading && (
               <div className="text-center py-8">
-                <p className="text-gray-600">Loading posts...</p>
+                <div className="inline-flex items-center">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600 mr-3"></div>
+                  <p className="text-gray-600">Loading posts...</p>
+                </div>
               </div>
             )}
 
@@ -838,10 +851,15 @@ const AutoTechCMS: React.FC = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {posts.map((post) => (
-                    <tr key={post.id}>
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={post.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">{post.title}</div>
                         <div className="text-sm text-gray-500">/{post.slug}</div>
+                        {post.featured && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1">
+                            Featured
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -861,28 +879,33 @@ const AutoTechCMS: React.FC = () => {
                         {post.publishedAt ? new Date(post.publishedAt).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex space-x-2">
+                        <div className="flex space-x-2 justify-end">
+                          {/* View Button */}
                           <button
                             onClick={() => window.open(`/blog/${post.slug}`, '_blank')}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="text-indigo-600 hover:text-indigo-800 p-2 rounded hover:bg-indigo-50 transition-colors"
                             title="View Post"
+                            disabled={loading}
                           >
                             <EyeIcon className="w-4 h-4" />
                           </button>
+                          
+                          {/* Edit Button */}
                           <button
-                            onClick={() => {
-                              setEditingPost(post);
-                              setShowPostEditor(true);
-                            }}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            onClick={() => handleEdit(post)}
+                            className="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-50 transition-colors"
                             title="Edit Post"
+                            disabled={loading}
                           >
                             <PencilIcon className="w-4 h-4" />
                           </button>
+                          
+                          {/* Delete Button */}
                           <button
-                            onClick={() => deletePost(post.id)}
-                            className="text-red-600 hover:text-red-900"
+                            onClick={() => handleDelete(post)}
+                            className="text-red-600 hover:text-red-800 p-2 rounded hover:bg-red-50 transition-colors"
                             title="Delete Post"
+                            disabled={loading}
                           >
                             <TrashIcon className="w-4 h-4" />
                           </button>
@@ -908,13 +931,24 @@ const AutoTechCMS: React.FC = () => {
         <PostEditor
           post={editingPost}
           onSave={async (postData) => {
-            if (editingPost) {
-              await updatePost(editingPost.id, postData);
-            } else {
-              await createPost(postData);
+            try {
+              if (editingPost) {
+                // Update existing post
+                console.log('📝 Updating existing post:', editingPost.id);
+                await updatePost(editingPost.id, postData);
+              } else {
+                // Create new post
+                console.log('🆕 Creating new post');
+                await createPost(postData);
+              }
+              
+              // Close the editor on success
+              setShowPostEditor(false);
+              setEditingPost(null);
+            } catch (error) {
+              console.error('❌ Error in PostEditor onSave:', error);
+              // Error is already handled in updatePost/createPost functions
             }
-            setShowPostEditor(false);
-            setEditingPost(null);
           }}
           onCancel={() => {
             setShowPostEditor(false);
