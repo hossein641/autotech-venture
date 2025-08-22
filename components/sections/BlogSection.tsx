@@ -4,9 +4,9 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BookOpen, Calendar, Clock, ArrowRight, TrendingUp, Users, Loader2 } from 'lucide-react';
+import { BookOpen, Calendar, Clock, ArrowRight, Loader2 } from 'lucide-react';
 
-// Types matching your existing blog system
+// Simple blog post interface
 interface BlogPost {
   id: string;
   slug: string;
@@ -16,72 +16,54 @@ interface BlogPost {
   author: {
     name: string;
     avatar: string;
-    title?: string;
   };
   publishedAt: string;
   readTime: number;
   category: string;
-  status: string;
 }
 
 interface BlogResponse {
   posts: BlogPost[];
-  pagination: {
-    total: number;
-  };
 }
 
 export default function BlogSection() {
-  const [recentPosts, setRecentPosts] = useState<BlogPost[]>([]);
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
-  // Blog stats (you can also fetch these from API if available)
-  const blogStats = [
-    { number: "50+", label: "Articles Published" },
-    { number: "10K+", label: "Monthly Readers" },
-    { number: "PhD", label: "Expert Authors" },
-    { number: "Weekly", label: "New Content" }
-  ];
-
-  // Fetch recent blog posts from API
+  // Fetch blog posts on component mount
   useEffect(() => {
-    const fetchRecentPosts = async () => {
+    const fetchPosts = async () => {
       try {
-        setLoading(true);
-        
-        // Fetch latest 3 published posts for homepage
-        const response = await fetch('/api/blog?status=PUBLISHED&limit=3&sortBy=publishedAt&sortOrder=desc');
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch: ${response.status}`);
+        const response = await fetch('/api/blog?limit=3&status=PUBLISHED');
+        if (response.ok) {
+          const data: BlogResponse = await response.json();
+          setPosts(data.posts || []);
+        } else {
+          setError(true);
         }
-        
-        const data: BlogResponse = await response.json();
-        setRecentPosts(data.posts || []);
-        setError(null);
-        
       } catch (err) {
-        console.error('Error fetching blog posts:', err);
-        setError('Failed to load blog posts');
-        
-        // Fallback to empty array - component will handle gracefully
-        setRecentPosts([]);
+        console.error('Blog fetch error:', err);
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecentPosts();
+    fetchPosts();
   }, []);
 
-  // Date formatting function
+  // Format date helper
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch {
+      return 'Recent';
+    }
   };
 
   return (
@@ -106,16 +88,6 @@ export default function BlogSection() {
             Stay informed with cutting-edge insights on AI, automation, and digital transformation 
             from our PhD-led team of technology experts.
           </p>
-
-          {/* Blog Stats */}
-          <div className="grid md:grid-cols-4 gap-6 max-w-2xl mx-auto mb-12">
-            {blogStats.map((stat, index) => (
-              <div key={index} className="bg-white rounded-xl p-4 shadow-lg">
-                <div className="text-xl font-bold text-indigo-600 mb-1">{stat.number}</div>
-                <div className="text-sm text-gray-600">{stat.label}</div>
-              </div>
-            ))}
-          </div>
         </div>
 
         {/* Loading State */}
@@ -129,8 +101,7 @@ export default function BlogSection() {
         {/* Error State */}
         {error && !loading && (
           <div className="text-center py-12">
-            <div className="text-red-600 mb-4">⚠️ {error}</div>
-            <p className="text-gray-600 mb-6">Unable to load latest blog posts at the moment.</p>
+            <div className="text-red-600 mb-4">Unable to load latest blog posts</div>
             <Link 
               href="/blog"
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
@@ -140,64 +111,83 @@ export default function BlogSection() {
           </div>
         )}
 
-        {/* Recent Blog Posts */}
-        {!loading && !error && recentPosts.length > 0 && (
+        {/* Blog Posts Grid */}
+        {!loading && !error && posts.length > 0 && (
           <>
             <div className="grid md:grid-cols-3 gap-8 mb-12">
-              {recentPosts.map((post) => (
+              {posts.map((post) => (
                 <article 
                   key={post.id} 
                   className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
                 >
+                  {/* Post Image */}
                   <Link href={`/blog/${post.slug}`}>
                     <div className="relative h-48 overflow-hidden">
-                      <Image
-                        src={post.featuredImage}
-                        alt={post.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      />
+                      {post.featuredImage ? (
+                        <Image
+                          src={post.featuredImage}
+                          alt={post.title}
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                          <BookOpen className="w-12 h-12 text-gray-400" />
+                        </div>
+                      )}
                       <div className="absolute top-4 left-4">
                         <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                          {post.category}
+                          {post.category || 'Article'}
                         </span>
                       </div>
                     </div>
                   </Link>
                   
+                  {/* Post Content */}
                   <div className="p-6">
+                    {/* Meta Information */}
                     <div className="flex items-center text-sm text-gray-500 mb-3">
                       <Calendar className="w-4 h-4 mr-2" />
                       <span className="mr-4">{formatDate(post.publishedAt)}</span>
                       <Clock className="w-4 h-4 mr-2" />
-                      <span>{post.readTime} min read</span>
+                      <span>{post.readTime || 5} min read</span>
                     </div>
                     
+                    {/* Post Title */}
                     <Link href={`/blog/${post.slug}`}>
                       <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors line-clamp-2">
                         {post.title}
                       </h3>
                     </Link>
                     
+                    {/* Post Excerpt */}
                     <p className="text-gray-600 mb-4 line-clamp-3">
                       {post.excerpt}
                     </p>
                     
+                    {/* Author and Read More */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
-                        <Image
-                          src={post.author.avatar}
-                          alt={post.author.name}
-                          width={32}
-                          height={32}
-                          className="rounded-full mr-3"
-                        />
+                        {post.author?.avatar ? (
+                          <Image
+                            src={post.author.avatar}
+                            alt={post.author.name}
+                            width={32}
+                            height={32}
+                            className="rounded-full mr-3"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 bg-gray-300 rounded-full mr-3 flex items-center justify-center">
+                            <span className="text-xs text-gray-600">
+                              {post.author?.name?.charAt(0) || 'A'}
+                            </span>
+                          </div>
+                        )}
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{post.author.name}</p>
-                          {post.author.title && (
-                            <p className="text-xs text-gray-500">{post.author.title}</p>
-                          )}
+                          <p className="text-sm font-semibold text-gray-900">
+                            {post.author?.name || 'AutoTech Team'}
+                          </p>
                         </div>
                       </div>
                       
@@ -214,7 +204,7 @@ export default function BlogSection() {
               ))}
             </div>
 
-            {/* Call to Action */}
+            {/* View All Button */}
             <div className="text-center">
               <Link
                 href="/blog"
@@ -229,7 +219,7 @@ export default function BlogSection() {
         )}
 
         {/* No Posts State */}
-        {!loading && !error && recentPosts.length === 0 && (
+        {!loading && !error && posts.length === 0 && (
           <div className="text-center py-12">
             <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-gray-900 mb-2">No Blog Posts Yet</h3>
