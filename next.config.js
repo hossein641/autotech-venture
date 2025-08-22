@@ -14,6 +14,11 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Add this for all domains (Google Images)
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
     ],
   },
   async headers() {
