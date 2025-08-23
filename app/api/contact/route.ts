@@ -1,4 +1,4 @@
-// app/api/contact/route.ts
+// app/api/contact/route.ts - Fixed TypeScript error
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
@@ -12,39 +12,20 @@ interface ContactFormData {
   budget?: string;
   timeline?: string;
   message: string;
-  source?: string; // Track if from homepage or contact page
+  source?: string;
 }
 
-// Email configuration
+// Create Resend transporter - FIXED: createTransport not createTransporter
 const createTransporter = () => {
-  // Option 1: Gmail (recommended for testing)
-  return nodemailer.createTransporter({
-    service: 'gmail',
+  return nodemailer.createTransport({
+    host: 'smtp.resend.com',
+    port: 587,
+    secure: false, // Use TLS
     auth: {
-      user: process.env.GMAIL_USER, // Your Gmail address
-      pass: process.env.GMAIL_APP_PASSWORD, // Gmail App Password
+      user: 'resend',
+      pass: process.env.RESEND_API_KEY,
     },
   });
-
-  // Option 2: SendGrid (for production)
-  // return nodemailer.createTransporter({
-  //   host: 'smtp.sendgrid.net',
-  //   port: 587,
-  //   auth: {
-  //     user: 'apikey',
-  //     pass: process.env.SENDGRID_API_KEY,
-  //   },
-  // });
-
-  // Option 3: Resend (modern alternative)
-  // return nodemailer.createTransporter({
-  //   host: 'smtp.resend.com',
-  //   port: 587,
-  //   auth: {
-  //     user: 'resend',
-  //     pass: process.env.RESEND_API_KEY,
-  //   },
-  // });
 };
 
 // Format form data into readable email
@@ -180,9 +161,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Check if email service is configured
-    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      console.error('❌ Email service not configured');
+    // Check if Resend API key is configured
+    if (!process.env.RESEND_API_KEY) {
+      console.error('❌ Resend API key not configured');
       return NextResponse.json(
         { 
           success: false, 
@@ -197,7 +178,7 @@ export async function POST(request: NextRequest) {
     
     // Verify connection
     await transporter.verify();
-    console.log('✅ Email service connected');
+    console.log('✅ Resend email service connected');
     
     // Prepare email content
     const formData: ContactFormData = {
@@ -215,7 +196,7 @@ export async function POST(request: NextRequest) {
     
     // Email to AutoTech Venture
     const mailOptions = {
-      from: `"${formData.firstName} ${formData.lastName}" <${process.env.GMAIL_USER}>`,
+      from: 'onboarding@resend.dev', // Using Resend's default domain for immediate setup
       to: 'info@atechv.com',
       replyTo: formData.email,
       subject: `🚀 New Consultation Request from ${formData.firstName} ${formData.lastName}`,
@@ -244,9 +225,9 @@ Form submitted via: ${formData.source}
     const result = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully:', result.messageId);
     
-    // Optional: Send confirmation email to user
+    // Send confirmation email to user
     const confirmationEmail = {
-      from: `"AutoTech Venture" <${process.env.GMAIL_USER}>`,
+      from: 'onboarding@resend.dev', // Using Resend's default domain
       to: formData.email,
       subject: '✅ Thank you for your consultation request - AutoTech Venture',
       html: `
