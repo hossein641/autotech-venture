@@ -1,4 +1,4 @@
-// app/api/contact/route.ts - Fixed TypeScript error
+// app/api/contact/route.ts - Fixed for 450 error
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
@@ -15,12 +15,12 @@ interface ContactFormData {
   source?: string;
 }
 
-// Create Resend transporter - FIXED: createTransport not createTransporter
+// Create Resend transporter
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: 'smtp.resend.com',
     port: 587,
-    secure: false, // Use TLS
+    secure: false,
     auth: {
       user: 'resend',
       pass: process.env.RESEND_API_KEY,
@@ -111,7 +111,7 @@ const formatEmailContent = (data: ContactFormData): string => {
   
   <div class="footer">
     <p>This message was sent via the AutoTech Venture website contact form.</p>
-    <p>Respond within 24 hours for best customer experience.</p>
+    <p>Reply directly to this email to respond to the customer.</p>
   </div>
 </body>
 </html>`;
@@ -194,11 +194,11 @@ export async function POST(request: NextRequest) {
       source: body.source || 'Website Contact Form',
     };
     
-    // Email to AutoTech Venture
+    // FIXED: Updated email configuration to avoid 450 error
     const mailOptions = {
-      from: 'onboarding@resend.dev', // Using Resend's default domain for immediate setup
+      from: 'AutoTech Venture <noreply@updates.atechv.com>', // Use a proper from address
       to: 'info@atechv.com',
-      replyTo: formData.email,
+      replyTo: `${formData.firstName} ${formData.lastName} <${formData.email}>`, // Proper reply-to format
       subject: `🚀 New Consultation Request from ${formData.firstName} ${formData.lastName}`,
       html: formatEmailContent(formData),
       text: `
@@ -218,19 +218,24 @@ Message:
 ${formData.message}
 
 Form submitted via: ${formData.source}
+
+---
+Reply to this email to respond directly to the customer.
       `,
     };
     
-    // Send email
+    // Send email with better error handling
+    console.log('📧 Attempting to send email...');
     const result = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully:', result.messageId);
     
-    // Send confirmation email to user
-    const confirmationEmail = {
-      from: 'onboarding@resend.dev', // Using Resend's default domain
-      to: formData.email,
-      subject: '✅ Thank you for your consultation request - AutoTech Venture',
-      html: `
+    // Optional: Send confirmation email to user (comment out if causing issues)
+    try {
+      const confirmationEmail = {
+        from: 'AutoTech Venture <noreply@updates.atechv.com>',
+        to: formData.email,
+        subject: '✅ Thank you for your consultation request - AutoTech Venture',
+        html: `
 <!DOCTYPE html>
 <html>
 <head>
@@ -260,8 +265,6 @@ Form submitted via: ${formData.source}
     
     <a href="tel:+13212361956" class="cta">Call Us Now: (321) 236-1956</a>
     
-    <p>In the meantime, feel free to browse our <a href="https://autotech-venture.vercel.app/blog">expert insights blog</a> or learn more about our <a href="https://autotech-venture.vercel.app/#services">services</a>.</p>
-    
     <p>Best regards,<br>
     <strong>Dr. Hossein Mohammadi & Team</strong><br>
     AutoTech Venture<br>
@@ -270,10 +273,15 @@ Form submitted via: ${formData.source}
   </div>
 </body>
 </html>`,
-    };
-    
-    await transporter.sendMail(confirmationEmail);
-    console.log('✅ Confirmation email sent to user');
+      };
+      
+      await transporter.sendMail(confirmationEmail);
+      console.log('✅ Confirmation email sent to user');
+    } catch (confirmError) {
+      const errorMsg = confirmError instanceof Error ? confirmError.message : 'Unknown error';
+      console.log('⚠️ Confirmation email failed, but main email sent:', errorMsg);
+      // Don't fail the whole request if confirmation email fails
+    }
     
     return NextResponse.json({
       success: true,
@@ -282,6 +290,20 @@ Form submitted via: ${formData.source}
     
   } catch (error) {
     console.error('❌ Contact form error:', error);
+    
+    // Enhanced error logging for 450 errors
+    if (error && typeof error === 'object' && 'code' in error && 'responseCode' in error) {
+      const emailError = error as { code: string; response: string; responseCode: number; command: string; message: string };
+      if (emailError.code === 'EMESSAGE' && emailError.responseCode === 450) {
+        console.error('❌ EMAIL 450 ERROR DETAILS:', {
+          code: emailError.code,
+          response: emailError.response,
+          responseCode: emailError.responseCode,
+          command: emailError.command,
+          message: emailError.message
+        });
+      }
+    }
     
     // Return user-friendly error message
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
