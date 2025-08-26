@@ -1,4 +1,4 @@
-// app/api/contact/route.ts - Fixed for 450 error
+// app/api/contact/route.ts - Simplified version to fix 450 error
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
@@ -26,95 +26,6 @@ const createTransporter = () => {
       pass: process.env.RESEND_API_KEY,
     },
   });
-};
-
-// Format form data into readable email
-const formatEmailContent = (data: ContactFormData): string => {
-  const currentDate = new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .header { background: #4f46e5; color: white; padding: 20px; text-align: center; }
-    .content { padding: 20px; }
-    .field { margin-bottom: 15px; }
-    .label { font-weight: bold; color: #4f46e5; }
-    .value { margin-left: 10px; }
-    .message-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin-top: 20px; }
-    .footer { background: #f8f9fa; padding: 15px; text-align: center; font-size: 12px; color: #666; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h2>🚀 New Consultation Request - AutoTech Venture</h2>
-    <p>Received on ${currentDate}</p>
-  </div>
-  
-  <div class="content">
-    <h3>Contact Information</h3>
-    <div class="field">
-      <span class="label">Name:</span>
-      <span class="value">${data.firstName} ${data.lastName}</span>
-    </div>
-    <div class="field">
-      <span class="label">Email:</span>
-      <span class="value">${data.email}</span>
-    </div>
-    ${data.phone ? `
-    <div class="field">
-      <span class="label">Phone:</span>
-      <span class="value">${data.phone}</span>
-    </div>` : ''}
-    ${data.company ? `
-    <div class="field">
-      <span class="label">Company:</span>
-      <span class="value">${data.company}</span>
-    </div>` : ''}
-    
-    <h3>Project Details</h3>
-    ${data.service ? `
-    <div class="field">
-      <span class="label">Service Interested:</span>
-      <span class="value">${data.service}</span>
-    </div>` : ''}
-    ${data.budget ? `
-    <div class="field">
-      <span class="label">Budget Range:</span>
-      <span class="value">${data.budget}</span>
-    </div>` : ''}
-    ${data.timeline ? `
-    <div class="field">
-      <span class="label">Timeline:</span>
-      <span class="value">${data.timeline}</span>
-    </div>` : ''}
-    
-    <div class="message-box">
-      <div class="label">Message:</div>
-      <div style="margin-top: 10px; white-space: pre-wrap;">${data.message}</div>
-    </div>
-    
-    ${data.source ? `
-    <div class="field" style="margin-top: 20px;">
-      <span class="label">Form Source:</span>
-      <span class="value">${data.source}</span>
-    </div>` : ''}
-  </div>
-  
-  <div class="footer">
-    <p>This message was sent via the AutoTech Venture website contact form.</p>
-    <p>Reply directly to this email to respond to the customer.</p>
-  </div>
-</body>
-</html>`;
 };
 
 // Validation function
@@ -194,27 +105,36 @@ export async function POST(request: NextRequest) {
       source: body.source || 'Website Contact Form',
     };
     
-    // FIXED: Updated email configuration to avoid 450 error
+    // SIMPLIFIED: Plain text only email
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
     const mailOptions = {
-      from: 'AutoTech Venture <noreply@updates.atechv.com>', // Use a proper from address
+      from: 'delivered@resend.dev',
       to: 'info@atechv.com',
-      replyTo: `${formData.firstName} ${formData.lastName} <${formData.email}>`, // Proper reply-to format
-      subject: `🚀 New Consultation Request from ${formData.firstName} ${formData.lastName}`,
-      html: formatEmailContent(formData),
+      replyTo: formData.email,
+      subject: `New Consultation Request from ${formData.firstName} ${formData.lastName}`,
       text: `
-New consultation request from ${formData.firstName} ${formData.lastName}
+NEW CONSULTATION REQUEST - AutoTech Venture
+Received on ${currentDate}
 
-Contact Information:
-- Email: ${formData.email}
-- Phone: ${formData.phone || 'Not provided'}
-- Company: ${formData.company || 'Not provided'}
+CONTACT INFORMATION:
+Name: ${formData.firstName} ${formData.lastName}
+Email: ${formData.email}
+${formData.phone ? `Phone: ${formData.phone}` : ''}
+${formData.company ? `Company: ${formData.company}` : ''}
 
-Project Details:
-- Service: ${formData.service || 'Not specified'}
-- Budget: ${formData.budget || 'Not specified'}
-- Timeline: ${formData.timeline || 'Not specified'}
+PROJECT DETAILS:
+${formData.service ? `Service: ${formData.service}` : ''}
+${formData.budget ? `Budget: ${formData.budget}` : ''}
+${formData.timeline ? `Timeline: ${formData.timeline}` : ''}
 
-Message:
+MESSAGE:
 ${formData.message}
 
 Form submitted via: ${formData.source}
@@ -224,64 +144,10 @@ Reply to this email to respond directly to the customer.
       `,
     };
     
-    // Send email with better error handling
-    console.log('📧 Attempting to send email...');
+    // Send email with simplified content
+    console.log('📧 Attempting to send simplified email...');
     const result = await transporter.sendMail(mailOptions);
     console.log('✅ Email sent successfully:', result.messageId);
-    
-    // Optional: Send confirmation email to user (comment out if causing issues)
-    try {
-      const confirmationEmail = {
-        from: 'AutoTech Venture <noreply@updates.atechv.com>',
-        to: formData.email,
-        subject: '✅ Thank you for your consultation request - AutoTech Venture',
-        html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .header { background: #4f46e5; color: white; padding: 20px; text-align: center; }
-    .content { padding: 20px; }
-    .cta { background: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 15px 0; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h2>Thank You for Your Interest!</h2>
-  </div>
-  <div class="content">
-    <p>Hi ${formData.firstName},</p>
-    
-    <p>Thank you for reaching out to AutoTech Venture! We've received your consultation request and our PhD experts will review it shortly.</p>
-    
-    <p><strong>What happens next:</strong></p>
-    <ul>
-      <li>✅ We'll respond within 24 hours</li>
-      <li>🎯 Our team will prepare a customized solution outline</li>
-      <li>📞 We'll schedule a free consultation call</li>
-      <li>💡 You'll receive expert recommendations with transparent pricing</li>
-    </ul>
-    
-    <a href="tel:+13212361956" class="cta">Call Us Now: (321) 236-1956</a>
-    
-    <p>Best regards,<br>
-    <strong>Dr. Hossein Mohammadi & Team</strong><br>
-    AutoTech Venture<br>
-    📧 info@atechv.com<br>
-    📞 (321) 236-1956</p>
-  </div>
-</body>
-</html>`,
-      };
-      
-      await transporter.sendMail(confirmationEmail);
-      console.log('✅ Confirmation email sent to user');
-    } catch (confirmError) {
-      const errorMsg = confirmError instanceof Error ? confirmError.message : 'Unknown error';
-      console.log('⚠️ Confirmation email failed, but main email sent:', errorMsg);
-      // Don't fail the whole request if confirmation email fails
-    }
     
     return NextResponse.json({
       success: true,
@@ -291,18 +157,16 @@ Reply to this email to respond directly to the customer.
   } catch (error) {
     console.error('❌ Contact form error:', error);
     
-    // Enhanced error logging for 450 errors
+    // Enhanced error logging for debugging
     if (error && typeof error === 'object' && 'code' in error && 'responseCode' in error) {
       const emailError = error as { code: string; response: string; responseCode: number; command: string; message: string };
-      if (emailError.code === 'EMESSAGE' && emailError.responseCode === 450) {
-        console.error('❌ EMAIL 450 ERROR DETAILS:', {
-          code: emailError.code,
-          response: emailError.response,
-          responseCode: emailError.responseCode,
-          command: emailError.command,
-          message: emailError.message
-        });
-      }
+      console.error('❌ EMAIL ERROR DETAILS:', {
+        code: emailError.code,
+        response: emailError.response,
+        responseCode: emailError.responseCode,
+        command: emailError.command,
+        message: emailError.message
+      });
     }
     
     // Return user-friendly error message
