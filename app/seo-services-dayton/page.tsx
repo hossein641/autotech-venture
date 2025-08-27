@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Search, TrendingUp, Target, BarChart, Globe, Zap, Users, CheckCircle, ArrowRight, Phone, Mail, MapPin, Star, Award, Clock, Eye } from 'lucide-react';
+import ServiceForm from '@/components/forms/ServiceForm';
 
 export const metadata: Metadata = {
   title: 'SEO Services Dayton Ohio | Local Search Optimization | AutoTech Venture',
@@ -209,39 +210,15 @@ export default function SEOServicesPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Your Free SEO Audit</h3>
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Your Business Name" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Website URL</label>
-                    <input type="url" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="https://yourwebsite.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="(xxx) xxx-xxxx" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Main Keywords/Services</label>
-                    <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 h-24" placeholder="What keywords do you want to rank for?"></textarea>
-                  </div>
-                  <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors font-semibold">
-                    Get Free SEO Audit Report
-                  </button>
-                </form>
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  ✓ Comprehensive audit ✓ Keyword analysis ✓ Competitor research
-                </p>
-              </div>
-            </div>
+            <ServiceForm 
+            service="Your Service Name"
+            source="Your Page Name" 
+            theme="blue" // or emerald, purple, orange, cyan
+            title="Get Your Free SEO Audit"
+            description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
+            compact={true} // true for smaller forms
+            />
+
           </div>
         </div>
       </section>

@@ -218,9 +218,9 @@ export default function AIConsultantPage() {
             service="Your Service Name"
             source="Your Page Name" 
             theme="blue" // or emerald, purple, orange, cyan
-            title="Custom Title"
-            description="Custom description"
-            compact={false} // true for smaller forms
+            title="Get Your Free Consultation"
+            description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
+            compact={true} // true for smaller forms
             />
           </div>
         </div>

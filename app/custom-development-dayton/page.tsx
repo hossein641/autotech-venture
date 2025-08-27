@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Code, Smartphone, Database, Zap, Globe, Cog, Users, CheckCircle, ArrowRight, Phone, Mail, MapPin, Star, Award, TrendingUp, Clock, Shield, Layers } from 'lucide-react';
+import ServiceForm from '@/components/forms/ServiceForm';
 
 export const metadata: Metadata = {
   title: 'Custom Software Development Dayton Ohio | Application Development | AutoTech Venture',
@@ -252,47 +253,15 @@ export default function CustomDevelopmentPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Your Free Project Consultation</h3>
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Your Company Name" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project Type</label>
-                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
-                      <option value="">Select Project Type</option>
-                      <option value="web-app">Web Application</option>
-                      <option value="mobile-app">Mobile Application</option>
-                      <option value="api">API Development</option>
-                      <option value="integration">System Integration</option>
-                      <option value="database">Database Solution</option>
-                      <option value="enterprise">Enterprise Software</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="(xxx) xxx-xxxx" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Project Description</label>
-                    <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 h-24" placeholder="Describe your custom development needs..."></textarea>
-                  </div>
-                  <button type="submit" className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-semibold">
-                    Get Free Project Consultation
-                  </button>
-                </form>
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  ✓ Free consultation ✓ Custom quote ✓ Technical roadmap
-                </p>
-              </div>
-            </div>
+            <ServiceForm 
+            service="Your Service Name"
+            source="Your Page Name" 
+            theme="blue" // or emerald, purple, orange, cyan
+            title="Get Your Free Consultation"
+            description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
+            compact={true} // true for smaller forms
+            />
+
           </div>
         </div>
       </section>

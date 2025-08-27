@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Bot, Brain, Zap, Target, Users, CheckCircle, ArrowRight, Phone, Mail, MapPin, Star, Award, TrendingUp, Clock } from 'lucide-react';
+import ServiceForm from '@/components/forms/ServiceForm';
 
 export const metadata: Metadata = {
   title: 'AI Solutions Dayton Ohio | Custom AI Services | AutoTech Venture',
@@ -191,35 +192,15 @@ export default function AISolutionsPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Your Free AI Assessment</h3>
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Your Company Name" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="(xxx) xxx-xxxx" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Current Business Challenge</label>
-                    <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24" placeholder="Tell us about your biggest challenge..."></textarea>
-                  </div>
-                  <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold">
-                    Request Free Assessment
-                  </button>
-                </form>
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  ✓ Free consultation ✓ No commitment ✓ Local Dayton team
-                </p>
-              </div>
-            </div>
+            <ServiceForm 
+            service="Your Service Name"
+            source="Your Page Name" 
+            theme="blue" // or emerald, purple, orange, cyan
+            title="Get Your Free AI Assessment"
+            description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
+            compact={true} // true for smaller forms
+            />
+
           </div>
         </div>
       </section>
