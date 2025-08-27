@@ -122,8 +122,6 @@ export async function POST(request: NextRequest) {
 
         // Try multiple recipient strategies
         const recipients = [
-          'info@atechv.com',      // Primary
-          'admin@atechv.com',     // Alternative 
           'hossein641@gmail.com'  // Fallback that should work
         ];
         
