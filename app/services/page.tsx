@@ -292,36 +292,7 @@ export default function ServicesPage() {
                   />
 
 
-                  <div className={isReverse ? 'lg:col-start-1' : ''}>
-                    <div className={`bg-gradient-to-br ${service.bgGradient} p-8 rounded-2xl`}>
-                      <div className="bg-white p-6 rounded-xl shadow-lg">
-                        <h4 className="text-xl font-bold text-gray-900 mb-4">Ready to get started?</h4>
-                        <p className="text-gray-600 mb-6">Get a free consultation and custom quote for your project.</p>
-                        <form className="space-y-4">
-                          <input 
-                            type="text" 
-                            placeholder="Your Name" 
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <input 
-                            type="email" 
-                            placeholder="Email Address" 
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          />
-                          <textarea 
-                            placeholder="Tell us about your project..." 
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 h-24"
-                          ></textarea>
-                          <button 
-                            type="submit" 
-                            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-                          >
-                            Get Free Quote
-                          </button>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
+
                 </div>
               );
             })}
