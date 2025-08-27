@@ -2,6 +2,7 @@
 import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
+import ServiceForm from '@/components/forms/ServiceForm';
 import Link from 'next/link';
 import { Bot, Globe, Search, ArrowRight, CheckCircle, Star, Users, Award, TrendingUp, Phone, Mail, MapPin, Zap, Brain, Code, BarChart, Target, Clock } from 'lucide-react';
 
@@ -281,6 +282,16 @@ export default function ServicesPage() {
                     </div>
                   </div>
                   
+                  <ServiceForm 
+                    service="Your Service Name"
+                    source="Your Page Name" 
+                    theme="blue" // or emerald, purple, orange, cyan
+                    title="Custom Title"
+                    description="Custom description"
+                    compact={false} // true for smaller forms
+                  />
+
+
                   <div className={isReverse ? 'lg:col-start-1' : ''}>
                     <div className={`bg-gradient-to-br ${service.bgGradient} p-8 rounded-2xl`}>
                       <div className="bg-white p-6 rounded-xl shadow-lg">
