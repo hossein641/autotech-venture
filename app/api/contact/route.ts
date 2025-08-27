@@ -1,4 +1,4 @@
-// app/api/contact/route.ts - Hybrid solution (always works + tries email)
+// app/api/contact/route.ts - SendGrid version (replace your current file)
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 
@@ -15,15 +15,15 @@ interface ContactFormData {
   source?: string;
 }
 
-// Create transporter (we'll try both Resend and fallback)
-const createResendTransporter = () => {
+// SendGrid transporter
+const createTransporter = () => {
   return nodemailer.createTransport({
-    host: 'smtp.resend.com',
+    host: 'smtp.sendgrid.net',
     port: 587,
     secure: false,
     auth: {
-      user: 'resend',
-      pass: process.env.RESEND_API_KEY,
+      user: 'apikey',
+      pass: process.env.SENDGRID_API_KEY,
     },
   });
 };
@@ -37,13 +37,11 @@ const validateFormData = (data: any): { isValid: boolean; errors: string[] } => 
   if (!data.email?.trim()) errors.push('Email is required');
   if (!data.message?.trim()) errors.push('Message is required');
   
-  // Email validation
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (data.email && !emailRegex.test(data.email)) {
     errors.push('Please provide a valid email address');
   }
   
-  // Message length validation
   if (data.message && data.message.trim().length < 10) {
     errors.push('Message must be at least 10 characters long');
   }
@@ -55,7 +53,6 @@ export async function POST(request: NextRequest) {
   try {
     console.log('📧 Contact form submission received');
     
-    // Parse request body
     const body = await request.json();
     console.log('📧 Form data:', { ...body, message: body.message?.substring(0, 50) + '...' });
     
@@ -86,10 +83,9 @@ export async function POST(request: NextRequest) {
       source: body.source || 'Website Contact Form',
     };
     
-    // ALWAYS LOG THE CONTACT (backup method)
-    const timestamp = new Date().toISOString();
+    // ALWAYS LOG THE CONTACT (backup)
     console.log('📋 === NEW CONTACT SUBMISSION ===');
-    console.log(`📅 ${timestamp}`);
+    console.log(`📅 ${new Date().toISOString()}`);
     console.log(`👤 ${formData.firstName} ${formData.lastName}`);
     console.log(`📧 ${formData.email}`);
     console.log(`📞 ${formData.phone || 'Not provided'}`);
@@ -101,17 +97,16 @@ export async function POST(request: NextRequest) {
     console.log(`🔗 ${formData.source}`);
     console.log('================================');
     
-    // TRY to send email, but don't fail if it doesn't work
+    // TRY SendGrid email
     let emailSent = false;
     let emailError = '';
     
-    if (process.env.RESEND_API_KEY) {
+    if (process.env.SENDGRID_API_KEY) {
       try {
-        const transporter = createResendTransporter();
+        const transporter = createTransporter();
         await transporter.verify();
-        console.log('✅ Attempting email send via Resend...');
+        console.log('✅ SendGrid connection verified');
         
-        // Email content
         const currentDate = new Date().toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -120,68 +115,81 @@ export async function POST(request: NextRequest) {
           minute: '2-digit',
         });
 
-        // Try multiple recipient strategies
-        const recipients = [
-          'hossein641@gmail.com'  // Fallback that should work
-        ];
-        
-        for (const recipient of recipients) {
-          try {
-            const mailOptions = {
-              from: 'delivered@resend.dev',
-              to: recipient,
-              replyTo: formData.email,
-              subject: `New Contact: ${formData.firstName} ${formData.lastName}`,
-              text: `NEW CONTACT SUBMISSION
+        const mailOptions = {
+          from: 'noreply@atechv.com', // Your domain
+          to: 'info@atechv.com',
+          replyTo: formData.email,
+          subject: `New Contact: ${formData.firstName} ${formData.lastName}`,
+          text: `NEW CONTACT SUBMISSION - AutoTech Venture
 Date: ${currentDate}
 
-Contact: ${formData.firstName} ${formData.lastName}
+CONTACT INFORMATION:
+Name: ${formData.firstName} ${formData.lastName}
 Email: ${formData.email}
 Phone: ${formData.phone || 'Not provided'}
 Company: ${formData.company || 'Not provided'}
 
+PROJECT DETAILS:
 Service: ${formData.service || 'Not specified'}
 Budget: ${formData.budget || 'Not specified'}
 Timeline: ${formData.timeline || 'Not specified'}
 
-Message:
+MESSAGE:
 ${formData.message}
 
 Source: ${formData.source}
+
 ---
-Reply to: ${formData.email}`,
-            };
-            
-            const result = await transporter.sendMail(mailOptions);
-            console.log(`✅ Email sent successfully to ${recipient}:`, result.messageId);
-            emailSent = true;
-            break; // Success! Stop trying other recipients
-            
-          } catch (recipientError) {
-            console.log(`⚠️ Failed to send to ${recipient}:`, recipientError instanceof Error ? recipientError.message : 'Unknown error');
-            continue; // Try next recipient
-          }
-        }
+Reply to this email to respond directly to the customer.`,
+          html: `
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <div style="background: #4f46e5; color: white; padding: 20px; text-align: center;">
+    <h2>🚀 New Contact Submission</h2>
+    <p>AutoTech Venture - ${currentDate}</p>
+  </div>
+  
+  <div style="padding: 20px; background: #f9f9f9;">
+    <h3>Contact Information</h3>
+    <p><strong>Name:</strong> ${formData.firstName} ${formData.lastName}</p>
+    <p><strong>Email:</strong> ${formData.email}</p>
+    ${formData.phone ? `<p><strong>Phone:</strong> ${formData.phone}</p>` : ''}
+    ${formData.company ? `<p><strong>Company:</strong> ${formData.company}</p>` : ''}
+    
+    <h3>Project Details</h3>
+    ${formData.service ? `<p><strong>Service:</strong> ${formData.service}</p>` : ''}
+    ${formData.budget ? `<p><strong>Budget:</strong> ${formData.budget}</p>` : ''}
+    ${formData.timeline ? `<p><strong>Timeline:</strong> ${formData.timeline}</p>` : ''}
+    
+    <div style="background: white; padding: 15px; border-radius: 5px; margin: 15px 0; border-left: 4px solid #4f46e5;">
+      <strong>Message:</strong><br>
+      ${formData.message}
+    </div>
+    
+    <p><strong>Source:</strong> ${formData.source}</p>
+    <p><small>Reply directly to this email to respond to the customer.</small></p>
+  </div>
+</div>`,
+        };
         
-        if (!emailSent) {
-          emailError = 'All recipient addresses failed';
-        }
+        const result = await transporter.sendMail(mailOptions);
+        console.log('✅ Email sent successfully via SendGrid:', result.messageId);
+        emailSent = true;
         
       } catch (serviceError) {
-        emailError = serviceError instanceof Error ? serviceError.message : 'Email service error';
-        console.log('⚠️ Email service failed:', emailError);
+        emailError = serviceError instanceof Error ? serviceError.message : 'SendGrid error';
+        console.log('⚠️ SendGrid failed:', emailError);
       }
     } else {
-      emailError = 'No email service configured';
-      console.log('⚠️ No RESEND_API_KEY found');
+      emailError = 'No SENDGRID_API_KEY configured';
+      console.log('⚠️ No SendGrid API key found');
     }
     
-    // ALWAYS return success to user (contact is logged regardless of email)
+    // ALWAYS return success (contact is logged)
     const successMessage = emailSent 
       ? 'Thank you! Your consultation request has been sent successfully. We\'ll respond within 24 hours.'
       : 'Thank you! Your consultation request has been received. We have your details and will respond within 24 hours.';
     
-    console.log(`📧 Email status: ${emailSent ? 'SENT' : 'LOGGED_ONLY'} ${emailError ? `(${emailError})` : ''}`);
+    console.log(`📧 Email status: ${emailSent ? 'SENT_VIA_SENDGRID' : 'LOGGED_ONLY'} ${emailError ? `(${emailError})` : ''}`);
     
     return NextResponse.json({
       success: true,
@@ -191,31 +199,12 @@ Reply to: ${formData.email}`,
   } catch (error) {
     console.error('❌ Contact form error:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to process your request. Please try again or contact us directly at info@atechv.com',
-        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+        error: 'Failed to process your request. Please try again or contact us directly at info@atechv.com'
       },
       { status: 500 }
     );
   }
 }
-
-/*
-HYBRID SOLUTION FEATURES:
-✅ Form ALWAYS works (never fails for users)
-✅ Contact details ALWAYS logged to Vercel (backup)
-✅ Tries to send email to multiple addresses
-✅ Graceful fallback if email fails
-✅ Clear logging for debugging
-
-TO CHECK CONTACT SUBMISSIONS:
-1. Vercel Dashboard → Your Project → Functions → /api/contact → Logs
-2. Look for "=== NEW CONTACT SUBMISSION ===" entries
-3. All contact details are logged with timestamps
-
-FUTURE: Replace with SendGrid for reliable email delivery
-*/
