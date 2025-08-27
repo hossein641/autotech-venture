@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         });
 
         const mailOptions = {
-          from: 'noreply@atechv.com', // Your domain
+          from: 'info@atechv.com', // Your domain
           to: 'info@atechv.com',
           replyTo: formData.email,
           subject: `New Contact: ${formData.firstName} ${formData.lastName}`,
