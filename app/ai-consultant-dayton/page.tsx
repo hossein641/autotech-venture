@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import Header from '@/components/layout/Header';
 import Footer from '@/components/layout/Footer';
 import { Brain, Target, Users, BarChart, Lightbulb, Zap, CheckCircle, ArrowRight, Phone, Mail, MapPin, Star, Award, TrendingUp, Clock, DollarSign } from 'lucide-react';
+import ServiceForm from '@/components/forms/ServiceForm';
 
 export const metadata: Metadata = {
   title: 'AI Consultant Dayton | AI Strategy Consulting | AutoTech Venture',
@@ -211,48 +212,16 @@ export default function AIConsultantPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
-              <div className="bg-white p-8 rounded-2xl shadow-2xl border border-gray-100">
-                <h3 className="text-2xl font-bold text-gray-900 mb-6">Get Your Free AI Strategy Consultation</h3>
-                <form className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Company Name</label>
-                    <input type="text" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Your Company Name" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Industry</label>
-                    <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                      <option value="">Select Your Industry</option>
-                      <option value="manufacturing">Manufacturing</option>
-                      <option value="healthcare">Healthcare</option>
-                      <option value="retail">Retail</option>
-                      <option value="professional-services">Professional Services</option>
-                      <option value="logistics">Logistics</option>
-                      <option value="finance">Finance</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                    <input type="email" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="your@email.com" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                    <input type="tel" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="(xxx) xxx-xxxx" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Current Business Challenge</label>
-                    <textarea className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 h-24" placeholder="What business challenge are you looking to solve with AI?"></textarea>
-                  </div>
-                  <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold">
-                    Schedule Free Strategy Session
-                  </button>
-                </form>
-                <p className="text-sm text-gray-500 mt-4 text-center">
-                  ✓ No commitment ✓ 1-hour consultation ✓ Custom AI roadmap
-                </p>
-              </div>
-            </div>
+
+
+            <ServiceForm 
+            service="Your Service Name"
+            source="Your Page Name" 
+            theme="blue" // or emerald, purple, orange, cyan
+            title="Custom Title"
+            description="Custom description"
+            compact={false} // true for smaller forms
+            />
           </div>
         </div>
       </section>
