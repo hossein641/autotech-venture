@@ -211,9 +211,9 @@ export default function SEOServicesPage() {
               </div>
             </div>
             <ServiceForm 
-            service="Your Service Name"
-            source="Your Page Name" 
-            theme="blue" // or emerald, purple, orange, cyan
+            service="SEO Services"
+            source="seo-services-dayton" 
+            theme="purple" // or emerald, purple, orange, cyan
             title="Get Your Free SEO Audit"
             description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
             compact={true} // true for smaller forms

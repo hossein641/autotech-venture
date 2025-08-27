@@ -254,9 +254,9 @@ export default function CustomDevelopmentPage() {
               </div>
             </div>
             <ServiceForm 
-            service="Your Service Name"
-            source="Your Page Name" 
-            theme="blue" // or emerald, purple, orange, cyan
+            service="Custom Software Development"
+            source="custom-development-dayton" 
+            theme="emerald" // or emerald, purple, orange, cyan
             title="Get Your Free Consultation"
             description="Tell us about your project and we'll provide a customized solution with transparent pricing. No obligation, just expert advice from our PhD team."
             compact={true} // true for smaller forms

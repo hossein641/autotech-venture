@@ -243,8 +243,8 @@ export default function DataAnalyticsPage() {
               </div>
             </div>
             <ServiceForm 
-            service="Your Service Name"
-            source="Your Page Name" 
+            service="Data Analytics"
+            source="data-analytics-dayton" 
             theme="blue" // or emerald, purple, orange, cyan
             title="Get Your Free Data Strategy Consultation"
             description="✓ Free consultation ✓ Data assessment ✓ Custom analytics roadmap"
