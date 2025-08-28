@@ -6,21 +6,21 @@ import { Users, Brain, Network, GraduationCap, ArrowRight } from 'lucide-react';
 export default function TeamSection() {
   const founders = [
     {
-      name: "Dr. Hossein Mohammadi",
+      name: "Hoss",
       title: "Co-Founder & Chief Executive Officer",
       degree: "PhD, Computer Science",
-      image: "/images/team/hossein-mohammadi.jpg",
+      image: "/images/team/Hoss.jpeg",
       expertise: ["Distributed Systems", "System Architecture", "Process Automation", "Business Intelligence"],
-      description: "8+ years of experience in distributed systems and business automation. Expert in system architecture and process optimization.",
+      description: "12+ years of experience in distributed systems and business automation. Expert in system architecture and process optimization.",
       icon: Network
     },
     {
-      name: "Dr. Maziyar Pouyan",
+      name: "Mazi",
       title: "Co-Founder & Chief Technology Officer",
       degree: "PhD, Computer Science", 
-      image: "/images/team/maziyar-pouyan.jpg",
+      image: "/images/team/Mazi.jpg",
       expertise: ["Machine Learning", "Deep Learning", "Computer Vision", "AI Systems"],
-      description: "7+ years of experience in AI and machine learning. Leading expert in developing cutting-edge AI solutions.",
+      description: "14+ years of experience in AI and machine learning. Leading expert in developing cutting-edge AI solutions.",
       icon: Brain
     }
   ];

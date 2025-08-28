@@ -6,18 +6,18 @@ import { Users, Award, Brain, Code, Database, Cpu, Network, BookOpen, Graduation
 
 export const metadata: Metadata = {
   title: 'Our Team | PhD Experts in AI & Automation | AutoTech Venture Dayton',
-  description: 'Meet the PhD experts behind AutoTech Venture. Dr. Hossein Mohammadi and Dr. Maziyar Pouyan lead our team of computer science professionals in Dayton, Ohio.',
+  description: 'Meet the PhD experts behind AutoTech Venture. Dr. Hoss and Dr. Mazi lead our team of computer science professionals in Dayton, Ohio.',
   keywords: [
     'AutoTech Venture team',
     'PhD computer science experts Dayton',
     'AI automation experts Ohio',
-    'Dr. Hossein Mohammadi',
-    'Dr. Maziyar Pouyan',
+    'Dr. Hoss',
+    'Dr. Mazi',
     'technology leadership team'
   ],
   openGraph: {
     title: 'Our Team | PhD Experts in AI & Automation | AutoTech Venture Dayton',
-    description: 'Meet the PhD experts behind AutoTech Venture - Dr. Hossein Mohammadi and Dr. Maziyar Pouyan.',
+    description: 'Meet the PhD experts behind AutoTech Venture - Dr. Hoss and Dr. Mazi.',
     url: 'https://www.atechv.com/team',
     siteName: 'AutoTech Venture',
     type: 'website',
@@ -25,17 +25,17 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'Our Team | PhD Experts in AI & Automation | AutoTech Venture Dayton',
-    description: 'Meet the PhD experts behind AutoTech Venture - Dr. Hossein Mohammadi and Dr. Maziyar Pouyan.',
+    description: 'Meet the PhD experts behind AutoTech Venture - Dr. Hoss and Dr. Mazi.',
   },
 };
 
 const teamLeaders = [
   {
-    name: "Dr. Hossein Mohammadi",
+    name: "Dr. Hoss",
     title: "Co-Founder & Chief Executive Officer",
     degree: "PhD, Computer Science",
-    image: "/images/team/hossein-mohammadi.jpg", // Placeholder - replace with actual image
-    bio: "Dr. Mohammadi brings over 8 years of experience in distributed systems and business automation. His expertise in system architecture and process optimization has helped dozens of Ohio businesses streamline their operations and achieve unprecedented efficiency gains.",
+    image: "/images/team/Hoss.jpeg", // Placeholder - replace with actual image
+    bio: "Dr. Hoss brings over 12 years of experience in distributed systems and business automation. His expertise in system architecture and process optimization has helped dozens of Ohio businesses streamline their operations and achieve unprecedented efficiency gains.",
     specializations: [
       "Distributed Systems",
       "System Architecture", 
@@ -52,11 +52,11 @@ const teamLeaders = [
     icon: Network
   },
   {
-    name: "Dr. Maziyar Pouyan",
+    name: "Dr. Mazi",
     title: "Co-Founder & Chief Technology Officer", 
     degree: "PhD, Computer Science",
-    image: "/images/team/maziyar-pouyan.jpg", // Placeholder - replace with actual image
-    bio: "Dr. Pouyan is a leading expert in artificial intelligence and machine learning with 7+ years of experience developing cutting-edge AI solutions. His deep learning expertise powers the innovative AI systems that transform how our clients operate and compete.",
+    image: "/images/team/Mazi.jpeg", // Placeholder - replace with actual image
+    bio: "Dr. Mazi is a leading expert in artificial intelligence and machine learning with 14+ years of experience developing cutting-edge AI solutions. His deep learning expertise powers the innovative AI systems that transform how our clients operate and compete.",
     specializations: [
       "Machine Learning",
       "Deep Learning",
@@ -76,7 +76,7 @@ const teamLeaders = [
 
 const teamStats = [
   {
-    number: "15+",
+    number: "26+",
     label: "Years Combined Experience",
     description: "In computer science & AI"
   },
