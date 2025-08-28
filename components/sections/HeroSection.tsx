@@ -19,7 +19,7 @@ export default function HeroSection() {
           </h1>
           <p className="text-xl text-gray-600 max-w-4xl mx-auto mb-8 leading-relaxed">
             AutoTech Venture empowers small businesses in Dayton and across Ohio with cutting-edge AI solutions, 
-            automation tools, and professional web services. Led by PhD experts in computer science with 15+ years of experience.
+            automation tools, and professional web services. Led by PhD experts in computer science with 26+ years of experience.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
             <Link

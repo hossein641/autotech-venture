@@ -424,6 +424,7 @@ export default function ServicesPage() {
               </p>
               <div className="space-y-4">
                 <button className="w-full bg-white text-blue-600 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold flex items-center justify-center gap-2">
+                  href="tel:+13212361956"
                   <Phone className="w-5 h-5" />
                   Call (321) 236-1956
                 </button>

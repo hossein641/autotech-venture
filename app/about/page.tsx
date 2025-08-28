@@ -16,7 +16,7 @@ export const metadata: Metadata = {
   ],
   openGraph: {
     title: 'About AutoTech Venture | AI & Automation Company Dayton Ohio',
-    description: 'Founded by PhD experts in 2019, AutoTech Venture empowers Dayton businesses with AI, automation, and web solutions.',
+    description: 'Founded by PhD experts, AutoTech Venture empowers Dayton businesses with AI, automation, and web solutions.',
     url: 'https://www.atechv.com/about',
     siteName: 'AutoTech Venture',
     type: 'website',
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'About AutoTech Venture | AI & Automation Company Dayton Ohio',
-    description: 'Founded by PhD experts in 2019, AutoTech Venture empowers Dayton businesses with AI, automation, and web solutions.',
+    description: 'Founded by PhD experts, AutoTech Venture empowers Dayton businesses with AI, automation, and web solutions.',
   },
 };
 
@@ -35,17 +35,17 @@ const stats = [
     description: "Delivered across Ohio"
   },
   {
-    number: "100%",
-    label: "Client Satisfaction",
+    number: "4.9★",
+    label: "Average Rating",
     description: "Proven track record"
   },
   {
-    number: "6 Years",
-    label: "In Business",
-    description: "Since 2019"
+    number: "95%",
+    label: "On-Time & On-Budget",
+    description: "Reliable delivery"
   },
   {
-    number: "15+",
+    number: "26+",
     label: "Years Experience",
     description: "Combined expertise"
   }
@@ -76,36 +76,49 @@ const values = [
 
 const milestones = [
   {
-    year: "2019",
-    title: "Company Founded",
-    description: "Dr. Hossein Mohammadi and Dr. Maziyar Pouyan establish AutoTech Venture in Dayton, Ohio."
+    year: "2015",
+    title: "First Industrial AI Pilot",
+    description:
+      "Built a predictive-maintenance prototype (Python, scikit-learn) for an Ohio machine shop using vibration and uptime data."
   },
   {
-    year: "2020",
-    title: "First AI Implementation",
-    description: "Successfully deployed our first custom AI solution for a local manufacturing company."
+    year: "2017",
+    title: "Vision-Powered QA",
+    description:
+      "Integrated OpenCV cameras with PLCs to flag defects on the line, reducing manual inspection effort."
+  },
+  {
+    year: "2019",
+    title: "Data Pipelines & Dashboards",
+    description:
+      "ETL from ERP/SCADA into a warehouse; delivered real-time OEE and throughput dashboards for supervisors."
   },
   {
     year: "2021",
-    title: "Web Design Division",
-    description: "Expanded services to include professional web design and development for Ohio businesses."
-  },
-  {
-    year: "2022",
-    title: "SEO Excellence",
-    description: "Launched comprehensive SEO services, helping clients dominate local search results."
+    title: "MLOps & Model Serving",
+    description:
+      "Containerized model APIs with CI/CD, monitoring for drift, and safe rollbacks to keep AI stable in production."
   },
   {
     year: "2023",
-    title: "Process Automation",
-    description: "Introduced advanced process automation solutions, saving clients thousands of hours annually."
+    title: "Generative AI Experiments",
+    description:
+      "RAG assistant over SOPs, maintenance logs, and drawings; automated ticket summaries and report drafting."
   },
   {
     year: "2024",
-    title: "50+ Projects",
-    description: "Reached milestone of 50+ successful projects with 100% client satisfaction rate."
+    title: "Process Automation at Scale",
+    description:
+      "Deployed bots and schedulers to streamline quoting, scheduling, and inventory checks across Ohio SMBs."
+  },
+  {
+    year: "2025",
+    title: "Optimization & Safety",
+    description:
+      "Built routing/scheduling optimizers with OR-Tools and established evals for accuracy, privacy, and robustness."
   }
 ];
+
 
 export default function AboutPage() {
   return (
