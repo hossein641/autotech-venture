@@ -184,13 +184,22 @@ export default function ServicesPage() {
               technology solutions that drive growth, efficiency, and competitive advantage for Ohio businesses.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <button className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+              {/* FIXED: Convert to functional consultation button */}
+              <a 
+                href="/contact"
+                className="bg-blue-600 text-white px-8 py-4 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2"
+              >
                 <Phone className="w-5 h-5" />
                 Get Free Consultation
-              </button>
-              <button className="border border-blue-600 text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold">
+              </a>
+              
+              {/* FIXED: Convert to functional portfolio button */}
+              <a 
+                href="/#services"
+                className="border border-blue-600 text-blue-600 px-8 py-4 rounded-lg hover:bg-blue-50 transition-colors font-semibold"
+              >
                 View Our Portfolio
-              </button>
+              </a>
             </div>
             
             {/* Stats */}
