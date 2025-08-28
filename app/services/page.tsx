@@ -423,21 +423,34 @@ export default function ServicesPage() {
                 Schedule your free consultation today.
               </p>
               <div className="space-y-4">
-                <button className="w-full bg-white text-blue-600 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold flex items-center justify-center gap-2">
+                {/* FIXED: Convert button to anchor tag for phone functionality */}
+                <a 
                   href="tel:+13212361956"
+                  className="w-full bg-white text-blue-600 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold flex items-center justify-center gap-2"
+                >
                   <Phone className="w-5 h-5" />
                   Call (321) 236-1956
-                </button>
-                <button className="w-full border border-white text-white py-3 rounded-lg hover:bg-white/10 transition-colors font-semibold flex items-center justify-center gap-2">
+                </a>
+                
+                {/* FIXED: Convert button to anchor tag for email functionality */}
+                <a 
+                  href="mailto:info@atechv.com"
+                  className="w-full border border-white text-white py-3 rounded-lg hover:bg-white/10 transition-colors font-semibold flex items-center justify-center gap-2"
+                >
                   <Mail className="w-5 h-5" />
                   Email Us Today
-                </button>
+                </a>
               </div>
               <div className="mt-6 pt-6 border-t border-blue-500 text-center">
-                <div className="flex items-center justify-center text-blue-100">
+                <a 
+                  href="https://maps.google.com/maps?q=95+Bramblebush+Trail,+Dayton,+OH+45440"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center text-blue-100 hover:text-white transition-colors"
+                >
                   <MapPin className="w-4 h-4 mr-2" />
                   95 Bramblebush Trail, Dayton, OH 45440
-                </div>
+                </a>
               </div>
             </div>
           </div>
