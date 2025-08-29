@@ -26,6 +26,7 @@ const services = [
       'Scale Operations Efficiently'
     ],
     href: '/ai-solutions-dayton',
+    ctaText: "Explore AI Solutions",
     gradient: 'from-blue-500 to-indigo-600',
     bgGradient: 'from-blue-50 to-indigo-50',
     startingPrice: 'Starting at $5,000'
@@ -50,6 +51,7 @@ const services = [
       'Conversion Focused'
     ],
     href: '/web-design-dayton',
+    ctaText: "View Web Design Services",
     gradient: 'from-emerald-500 to-teal-600',
     bgGradient: 'from-emerald-50 to-teal-50',
     startingPrice: 'Starting at $3,000'
@@ -74,6 +76,7 @@ const services = [
       'Better Online Visibility'
     ],
     href: '/seo-services-dayton',
+    ctaText: "Get SEO Services Details",
     gradient: 'from-purple-500 to-pink-600',
     bgGradient: 'from-purple-50 to-pink-50',
     startingPrice: 'Starting at $1,500'
@@ -161,7 +164,7 @@ export default function ServicesSection() {
                   href={service.href}
                   className="inline-flex items-center text-blue-600 font-semibold hover:text-blue-700 transition-colors group"
                 >
-                  Learn More
+                  {service.ctaText || `Get ${service.title} Details`}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Link>
 

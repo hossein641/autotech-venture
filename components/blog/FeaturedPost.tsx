@@ -1,4 +1,4 @@
-// components/blog/FeaturedPost.tsx - Production version with database integration
+// components/blog/FeaturedPost.tsx - Production version with SEO-optimized CTAs
 import Link from 'next/link';
 import Image from 'next/image';
 import { Calendar, Clock, ArrowRight, Star } from 'lucide-react';
@@ -20,6 +20,18 @@ function getImageUrl(imageUrl: string | null | undefined, type: 'featured' | 'av
     : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format&q=80';
 }
 
+// ✅ Generate SEO-friendly CTA text for featured posts
+function generateFeaturedCtaText(title: string, category: string): string {
+  // For featured posts, create more compelling CTA text
+  if (title.length > 45) {
+    return `Read Full ${category} Article`;
+  }
+  
+  // Use shortened title for better UX
+  const shortTitle = title.length > 35 ? title.substring(0, 32) + "..." : title;
+  return `Read: ${shortTitle}`;
+}
+
 export default function FeaturedPost({ post, className = '' }: FeaturedPostProps) {
   // ✅ Handle null post gracefully
   if (!post) {
@@ -30,7 +42,14 @@ export default function FeaturedPost({ post, className = '' }: FeaturedPostProps
             <Star className="w-8 h-8 text-indigo-600" />
           </div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">No Featured Post</h3>
-          <p className="text-gray-600">Check back soon for featured content from our experts.</p>
+          <p className="text-gray-600 mb-4">Check back soon for featured content from our experts.</p>
+          <Link 
+            href="/blog"
+            className="inline-flex items-center text-indigo-600 font-semibold hover:text-indigo-700 transition-colors"
+          >
+            Browse All Articles
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Link>
         </div>
       </div>
     );
@@ -46,6 +65,9 @@ export default function FeaturedPost({ post, className = '' }: FeaturedPostProps
 
   const featuredImageUrl = getImageUrl(post.featuredImage, 'featured');
   const authorAvatarUrl = getImageUrl(post.author?.avatar, 'avatar');
+  
+  // ✅ Generate SEO-friendly CTA text
+  const ctaText = generateFeaturedCtaText(post.title, post.category);
 
   return (
     <article className={`bg-white rounded-2xl shadow-xl overflow-hidden hover:shadow-2xl transition-all duration-300 group ${className}`}>
@@ -91,10 +113,12 @@ export default function FeaturedPost({ post, className = '' }: FeaturedPostProps
             <span>{post.readTime} min read</span>
           </div>
           
-          {/* Title */}
-          <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 leading-tight group-hover:text-indigo-600 transition-colors">
-            {post.title}
-          </h2>
+          {/* Title as clickable link */}
+          <Link href={`/blog/${post.slug}`}>
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-4 leading-tight group-hover:text-indigo-600 transition-colors cursor-pointer">
+              {post.title}
+            </h2>
+          </Link>
           
           {/* Excerpt */}
           <p className="text-lg text-gray-600 mb-6 leading-relaxed line-clamp-3">
@@ -121,11 +145,13 @@ export default function FeaturedPost({ post, className = '' }: FeaturedPostProps
               </div>
             </div>
             
+            {/* ✅ SEO-optimized CTA with descriptive text */}
             <Link
               href={`/blog/${post.slug}`}
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold flex items-center gap-2 shadow-md hover:shadow-lg"
+              aria-label={`Read full featured article: ${post.title}`}
             >
-              Read Article
+              {ctaText}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

@@ -1,7 +1,7 @@
-// components/blog/BlogCard.tsx - Production-ready with database URL support
+// components/blog/BlogCard.tsx - Production-ready with SEO-optimized link text
 import Link from 'next/link';
 import Image from 'next/image';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, ArrowRight } from 'lucide-react';
 
 export interface BlogPostData {
   id: string;
@@ -45,6 +45,18 @@ function getImageUrl(imageUrl: string | null | undefined, type: 'featured' | 'av
     : 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format&q=80'; // Professional person
 }
 
+// ✅ SEO-optimized CTA text generator
+function generateCtaText(title: string, category: string): string {
+  // Create descriptive link text based on title length and category
+  if (title.length > 50) {
+    return `Read ${category} Guide`;
+  }
+  
+  // For shorter titles, use abbreviated title
+  const shortTitle = title.length > 40 ? title.substring(0, 37) + "..." : title;
+  return `Read: ${shortTitle}`;
+}
+
 export default function BlogCard({ post }: BlogCardProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -57,6 +69,9 @@ export default function BlogCard({ post }: BlogCardProps) {
   // ✅ Get proper image URLs from database or fallbacks
   const featuredImageUrl = getImageUrl(post.featuredImage, 'featured');
   const authorAvatarUrl = getImageUrl(post.author?.avatar, 'avatar');
+  
+  // ✅ Generate SEO-friendly CTA text
+  const ctaText = generateCtaText(post.title, post.category);
 
   return (
     <article className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group">
@@ -123,16 +138,32 @@ export default function BlogCard({ post }: BlogCardProps) {
             </div>
           </div>
           
-          <div className="flex flex-wrap gap-1">
-            {post.tags.slice(0, 2).map((tag, index) => (
-              <span 
-                key={index}
-                className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
+          {/* ✅ SEO-optimized CTA link with descriptive text */}
+          <Link
+            href={`/blog/${post.slug}`}
+            className="text-indigo-600 hover:text-indigo-700 font-semibold text-sm inline-flex items-center transition-colors group/cta"
+            aria-label={`Read full article: ${post.title}`}
+          >
+            {ctaText}
+            <ArrowRight className="w-4 h-4 ml-1 group-hover/cta:translate-x-1 transition-transform" />
+          </Link>
+        </div>
+        
+        {/* Tags moved to bottom */}
+        <div className="flex flex-wrap gap-1 mt-4">
+          {post.tags.slice(0, 3).map((tag, index) => (
+            <span 
+              key={index}
+              className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs"
+            >
+              {tag}
+            </span>
+          ))}
+          {post.tags.length > 3 && (
+            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+              +{post.tags.length - 3}
+            </span>
+          )}
         </div>
       </div>
     </article>
