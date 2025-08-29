@@ -21,8 +21,12 @@ const nextConfig = {
       },
     ],
   },
+  experimental: {
+    isrMemoryCacheSize: 0, // Disable ISR cache for sitemap
+  },
   async headers() {
     return [
+      // Security headers for all pages
       {
         source: '/(.*)',
         headers: [
@@ -40,13 +44,21 @@ const nextConfig = {
           },
         ],
       },
+      // Sitemap-specific headers
+      {
+        source: '/sitemap.xml',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/xml',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
     ];
-  },
-};
-
-module.exports = {
-  experimental: {
-    isrMemoryCacheSize: 0, // Disable ISR cache for sitemap
   },
 };
 
