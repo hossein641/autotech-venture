@@ -92,4 +92,4 @@ export const trackExternalLink = (url: string, linkText: string) => {
     link_text: linkText,
     event_category: 'engagement',
   });
-};
+}

@@ -44,4 +44,10 @@ const nextConfig = {
   },
 };
 
+module.exports = {
+  experimental: {
+    isrMemoryCacheSize: 0, // Disable ISR cache for sitemap
+  },
+};
+
 module.exports = nextConfig;
