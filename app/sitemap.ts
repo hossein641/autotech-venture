@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getBlogPosts } from '@/lib/database';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://www.autotech-venture.com';
+  const baseUrl = 'https://autotech-venture.com';
   
   // Static pages - clean array without any HTML/script interference
   const staticRoutes: MetadataRoute.Sitemap = [
