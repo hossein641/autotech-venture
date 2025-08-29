@@ -205,11 +205,23 @@ export async function POST(request: NextRequest) {
       slug: newPost.slug
     });
 
+    // Trigger rebuild if published post created in production
+    if (process.env.NODE_ENV === 'production' && newPost.status === 'PUBLISHED') {
+      try {
+        await fetch(process.env.VERCEL_DEPLOY_HOOK_URL!, { method: 'POST' });
+        console.log('🚀 Triggered site rebuild for new published post');
+      } catch (error) {
+        console.error('❌ Failed to trigger rebuild:', error);
+        // Don't fail the request if webhook fails
+      }
+    }
+
     // Return the created post with explicit status
     return NextResponse.json({
       ...newPost,
       status: newPost.status || validatedData.status // Ensure status is always present
     }, { status: 201 });
+    
 
   } catch (error) {
     console.error('❌ POST /api/blog error:', error);
