@@ -3,7 +3,7 @@ import { Inter } from 'next/font/google';
 import Script from 'next/script';
 import './globals.css';
 import { organizationSchema, websiteSchema } from '@/lib/schema';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
+//import GoogleAnalytics from '@/components/GoogleAnalytics';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -100,7 +100,6 @@ export default function RootLayout({
             __html: JSON.stringify(websiteSchema),
           }}
         />
-        <GoogleAnalytics />
       </head>
       <body className={inter.className}>
         {children}
