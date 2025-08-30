@@ -7,10 +7,12 @@ import GoogleAnalytics from '@/components/GoogleAnalytics';
 
 const inter = Inter({ subsets: ['latin'] });
 
+// ✅ Fixed viewport to allow zooming for accessibility
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // ✅ Removed maximumScale: 1 to allow zooming for accessibility
+  // Users with low vision need to be able to zoom up to 500%
   themeColor: '#1e3a8a',
 };
 
@@ -83,33 +85,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const GA_ID = process.env.NEXT_PUBLIC_GA_ID;
-
   return (
     <html lang="en">
       <head>
-        {/* Google Analytics Scripts - Only load if GA_ID is available */}
-        {GA_ID && (
-          <>
-            <Script
-              src={`https://www.googletagmanager.com/gtag/js?id=${GA_ID}`}
-              strategy="afterInteractive"
-            />
-            <Script id="google-analytics" strategy="afterInteractive">
-              {`
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-                gtag('config', '${GA_ID}', {
-                  page_title: document.title,
-                  page_location: window.location.href,
-                });
-              `}
-            </Script>
-          </>
-        )}
-        
-        {/* Schema Markup */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -122,10 +100,9 @@ export default function RootLayout({
             __html: JSON.stringify(websiteSchema),
           }}
         />
+        <GoogleAnalytics />
       </head>
       <body className={inter.className}>
-        {/* Google Analytics Component for client-side tracking */}
-        {GA_ID && <GoogleAnalytics />}
         {children}
       </body>
     </html>
