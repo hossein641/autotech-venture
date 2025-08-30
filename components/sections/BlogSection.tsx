@@ -1,4 +1,4 @@
-// components/sections/BlogSection.tsx
+// components/sections/BlogSection.tsx - SEO-optimized version
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,6 +24,18 @@ interface BlogPost {
 
 interface BlogResponse {
   posts: BlogPost[];
+}
+
+// ✅ SEO-optimized CTA text generator for blog posts
+function generateBlogCtaText(title: string, category: string): string {
+  // Create descriptive link text based on title length
+  if (title.length > 50) {
+    return `Read ${category} Article`;
+  }
+  
+  // For shorter titles, use abbreviated title
+  const shortTitle = title.length > 40 ? title.substring(0, 37) + "..." : title;
+  return `Read: ${shortTitle}`;
 }
 
 export default function BlogSection() {
@@ -92,21 +104,23 @@ export default function BlogSection() {
 
         {/* Loading State */}
         {loading && (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
-            <span className="ml-2 text-gray-600">Loading latest articles...</span>
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-4" />
+            <p className="text-gray-600">Loading latest insights...</p>
           </div>
         )}
 
         {/* Error State */}
         {error && !loading && (
           <div className="text-center py-12">
-            <div className="text-red-600 mb-4">Unable to load latest blog posts</div>
+            <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-gray-900 mb-2">Blog Temporarily Unavailable</h3>
+            <p className="text-gray-600 mb-6">We're working to get our latest insights back online.</p>
             <Link 
-              href="/blog"
+              href="/contact"
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
             >
-              Visit Blog Page
+              Contact Us for Updates
             </Link>
           </div>
         )}
@@ -114,59 +128,53 @@ export default function BlogSection() {
         {/* Blog Posts Grid */}
         {!loading && !error && posts.length > 0 && (
           <>
-            <div className="grid md:grid-cols-3 gap-8 mb-12">
-              {posts.map((post) => (
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+              {posts.map((post, index) => (
                 <article 
                   key={post.id} 
                   className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
                 >
-                  {/* Post Image */}
-                  <Link href={`/blog/${post.slug}`}>
-                    <div className="relative h-48 overflow-hidden">
-                      {post.featuredImage ? (
-                        <Image
-                          src={post.featuredImage}
-                          alt={post.title}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-300"
-                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                          <BookOpen className="w-12 h-12 text-gray-400" />
-                        </div>
-                      )}
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                          {post.category || 'Article'}
-                        </span>
-                      </div>
+                  {/* Featured Image */}
+                  <div className="relative h-48 overflow-hidden">
+                    <Image
+                      src={post.featuredImage || '/images/blog/placeholder.jpg'}
+                      alt={post.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=800&h=400&fit=crop&auto=format&q=80';
+                      }}
+                    />
+                    <div className="absolute top-4 left-4">
+                      <span className="bg-indigo-600 text-white px-3 py-1 rounded-full text-xs font-semibold">
+                        {post.category}
+                      </span>
                     </div>
-                  </Link>
+                  </div>
                   
-                  {/* Post Content */}
                   <div className="p-6">
                     {/* Meta Information */}
                     <div className="flex items-center text-sm text-gray-500 mb-3">
                       <Calendar className="w-4 h-4 mr-2" />
                       <span className="mr-4">{formatDate(post.publishedAt)}</span>
                       <Clock className="w-4 h-4 mr-2" />
-                      <span>{post.readTime || 5} min read</span>
+                      <span>{post.readTime} min read</span>
                     </div>
                     
-                    {/* Post Title */}
+                    {/* Title */}
                     <Link href={`/blog/${post.slug}`}>
-                      <h3 className="text-lg font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                      <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-indigo-600 transition-colors line-clamp-2">
                         {post.title}
                       </h3>
                     </Link>
                     
-                    {/* Post Excerpt */}
+                    {/* Excerpt */}
                     <p className="text-gray-600 mb-4 line-clamp-3">
                       {post.excerpt}
                     </p>
                     
-                    {/* Author and Read More */}
+                    {/* Author and CTA */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center">
                         {post.author?.avatar ? (
@@ -175,7 +183,11 @@ export default function BlogSection() {
                             alt={post.author.name}
                             width={32}
                             height={32}
-                            className="rounded-full mr-3"
+                            className="rounded-full mr-3 object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&auto=format&q=80';
+                            }}
                           />
                         ) : (
                           <div className="w-8 h-8 bg-gray-300 rounded-full mr-3 flex items-center justify-center">
@@ -191,12 +203,14 @@ export default function BlogSection() {
                         </div>
                       </div>
                       
+                      {/* ✅ SEO-optimized CTA link with descriptive text */}
                       <Link
                         href={`/blog/${post.slug}`}
-                        className="text-indigo-600 hover:text-indigo-700 font-medium text-sm flex items-center gap-1"
+                        className="text-indigo-600 hover:text-indigo-700 font-medium text-sm flex items-center gap-1 transition-colors group/cta"
+                        aria-label={`Read full article: ${post.title}`}
                       >
-                        Read More
-                        <ArrowRight className="w-4 h-4" />
+                        {generateBlogCtaText(post.title, post.category)}
+                        <ArrowRight className="w-4 h-4 group-hover/cta:translate-x-1 transition-transform" />
                       </Link>
                     </div>
                   </div>
@@ -208,7 +222,8 @@ export default function BlogSection() {
             <div className="text-center">
               <Link
                 href="/blog"
-                className="bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center gap-2 shadow-lg"
+                className="bg-indigo-600 text-white px-8 py-4 rounded-lg hover:bg-indigo-700 transition-colors font-semibold inline-flex items-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-1 duration-300"
+                aria-label="View all blog articles from AutoTech Venture"
               >
                 <BookOpen className="w-5 h-5" />
                 View All Articles
@@ -227,6 +242,7 @@ export default function BlogSection() {
             <Link 
               href="/contact"
               className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-semibold"
+              aria-label="Contact AutoTech Venture for updates"
             >
               Stay Tuned
             </Link>
