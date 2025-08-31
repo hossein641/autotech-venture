@@ -550,7 +550,7 @@ export async function getBlogPostBySlug(slug: string) {
       status: post.status,
       author: {
         name: post.author.name,
-        avatar: post.author.avatar || '/images/team/hossein.jpg',
+        avatar: post.author.avatar || '/images/team/Hoss.jpeg',
         title: post.author.title || 'AI Solutions Expert & CEO'
       },
       category: post.category.name,
