@@ -54,17 +54,28 @@ export async function POST(request: NextRequest) {
       authToken: TURSO_AUTH_TOKEN
     });
     
-    // Generate unique slug
-    const baseSlug = body.title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, '')
-      .substring(0, 50);
-    
-    // Check if slug exists and make it unique
+    // Generate unique slug (support custom slug or auto-generate)
+    let baseSlug;
+    if (body.slug && body.slug.trim()) {
+      // Use provided slug
+      baseSlug = body.slug
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+        .substring(0, 50);
+    } else {
+      // Auto-generate from title
+      baseSlug = body.title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/(^-|-$)/g, '')
+        .substring(0, 50);
+    }
+
+    // Check uniqueness (same logic)
     let slug = baseSlug;
     let counter = 1;
-    
+
     while (true) {
       const existingPost = await turso.execute({
         sql: 'SELECT id FROM BlogPost WHERE slug = ?',
