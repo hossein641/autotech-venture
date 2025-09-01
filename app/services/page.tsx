@@ -393,7 +393,7 @@ export default function ServicesPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 mb-2">PhD-Level Expertise</h3>
-                    <p className="text-gray-600">Led by Dr. Hossein Mohammadi and Dr. Maziyar Pouyan with combined 15+ years of experience in computer science and business automation.</p>
+                    <p className="text-gray-600">Led by Dr. Hoss and Dr. Mazi with combined 15+ years of experience in computer science and business automation.</p>
                   </div>
                 </div>
                 <div className="flex items-start">

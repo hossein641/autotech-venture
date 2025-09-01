@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Phone, Mail } from 'lucide-react';
+import { MapPin, Phone, Mail, Facebook, Linkedin } from 'lucide-react';
 
 export default function Footer() {
   return (
@@ -44,6 +44,31 @@ export default function Footer() {
                 <Mail className="w-4 h-4 mr-3 flex-shrink-0 group-hover:text-blue-400" />
                 <span className="text-sm">info@AtechV.com</span>
               </a>
+            </div>
+
+            {/* Social Media Links */}
+            <div className="mt-6">
+              <h4 className="font-semibold mb-3 text-gray-300">Follow Us</h4>
+              <div className="flex space-x-4">
+                <a
+                  href="https://www.facebook.com/profile.php?id=61580041593980"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-800 hover:bg-blue-600 text-gray-300 hover:text-white p-2 rounded-full transition-colors"
+                  aria-label="Visit our Facebook page"
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/autotech-venture/?viewAsMember=true"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-800 hover:bg-blue-700 text-gray-300 hover:text-white p-2 rounded-full transition-colors"
+                  aria-label="Visit our LinkedIn page"
+                >
+                  <Linkedin className="w-5 h-5" />
+                </a>
+              </div>
             </div>
           </div>
 

@@ -3,8 +3,8 @@ export const organizationSchema = {
   "@type": "Organization",
   "name": "AutoTech Venture",
   "description": "AI-powered automation solutions, web design, and SEO services for small businesses in Dayton, Ohio. Led by PhD experts in computer science.",
-  "url": "https://www.atechv.com",
-  "logo": "https://www.atechv.com/logo.png",
+  "url": "https://www.autotech-venture.com",
+  "logo": "https://www.autotech-venture.com/logo.png",
   "address": {
     "@type": "PostalAddress",
     "streetAddress": "95 Bramblebush Trail",
@@ -24,7 +24,7 @@ export const organizationSchema = {
   "founder": [
     {
       "@type": "Person",
-      "name": "Dr. Hossein Mohammadi",
+      "name": "Dr. Hoss",
       "jobTitle": "Co-Founder & Chief Executive Officer",
       "hasCredential": {
         "@type": "EducationalOccupationalCredential",
@@ -33,7 +33,7 @@ export const organizationSchema = {
     },
     {
       "@type": "Person",
-      "name": "Dr. Maziyar Pouyan", 
+      "name": "Dr. Mazi", 
       "jobTitle": "Co-Founder & Chief Technology Officer",
       "hasCredential": {
         "@type": "EducationalOccupationalCredential",
@@ -53,10 +53,10 @@ export const websiteSchema = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   "name": "AutoTech Venture",
-  "url": "https://www.atechv.com",
+  "url": "https://www.autotech-venture.com",
   "potentialAction": {
     "@type": "SearchAction",
-    "target": "https://www.atechv.com/search?q={search_term_string}",
+    "target": "https://www.autotech-venture.com/search?q={search_term_string}",
     "query-input": "required name=search_term_string"
   }
 };

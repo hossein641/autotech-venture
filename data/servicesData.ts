@@ -268,7 +268,7 @@ export const companyStats: readonly Stat[] = [
 export const whyChooseUs = [
   {
     title: 'PhD-Level Expertise',
-    description: 'Led by Dr. Hossein Mohammadi and Dr. Maziyar Pouyan with combined 15+ years of experience in computer science and business automation.',
+    description: 'Led by Dr. Hoss and Dr. Mazi with combined 15+ years of experience in computer science and business automation.',
     icon: Award
   },
   {

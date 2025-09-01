@@ -391,7 +391,7 @@ export default function AIConsultantPage() {
                     <Award className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Dr. Hossein Mohammadi - CEO & Lead AI Strategist</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Dr. Hoss - CEO & Lead AI Strategist</h3>
                     <p className="text-gray-600">PhD in Computer Science with 8+ years in distributed systems and AI research. Led AI transformations for 50+ businesses.</p>
                   </div>
                 </div>
@@ -400,7 +400,7 @@ export default function AIConsultantPage() {
                     <Brain className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Dr. Maziyar Pouyan - CTO & Technical Lead</h3>
+                    <h3 className="font-semibold text-gray-900 mb-2">Dr. Mazi - CTO & Technical Lead</h3>
                     <p className="text-gray-600">PhD in Computer Science specializing in machine learning and AI systems. Expert in AI implementation and technical architecture.</p>
                   </div>
                 </div>
