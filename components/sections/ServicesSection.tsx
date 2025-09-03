@@ -246,7 +246,7 @@ export default function ServicesSection() {
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-blue-100">
               <div className="flex items-center">
                 <Phone className="w-4 h-4 mr-2" />
-                Call: (321) 236-1956
+                Call: (937) 963-9424
               </div>
               <div className="flex items-center">
                 <Mail className="w-4 h-4 mr-2" />

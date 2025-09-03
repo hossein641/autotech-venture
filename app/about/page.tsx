@@ -371,10 +371,10 @@ export default function AboutPage() {
               Get Free Consultation
             </a>
             <a
-              href="tel:+13212361956"
+              href="tel:+19379639424"
               className="bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-800 transition-colors border-2 border-blue-400"
             >
-              Call (321) 236-1956
+              Call (937) 963-9424
             </a>
           </div>
         </div>

@@ -29,11 +29,11 @@ export default function Footer() {
               
               {/* Phone */}
               <a 
-                href="tel:+13212361956"
+                href="tel:+19379639424"
                 className="flex items-center text-gray-400 hover:text-white transition-colors group"
               >
                 <Phone className="w-4 h-4 mr-3 flex-shrink-0 group-hover:text-green-400" />
-                <span className="text-sm">(321) 236-1956</span>
+                <span className="text-sm">(937) 963-9424</span>
               </a>
               
               {/* Email */}

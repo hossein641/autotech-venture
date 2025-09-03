@@ -290,7 +290,7 @@ export const whyChooseUs = [
 
 // Contact Information
 export const contactInfo = {
-  phone: '(321) 236-1956',
+  phone: '(937) 963-9424',
   email: 'info@atechv.com',
   address: '95 Bramblebush Trail, Dayton, OH 45440',
   hours: 'Mon-Fri 9:00 AM - 6:00 PM EST'

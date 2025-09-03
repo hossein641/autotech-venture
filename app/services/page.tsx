@@ -434,11 +434,11 @@ export default function ServicesPage() {
               <div className="space-y-4">
                 {/* FIXED: Convert button to anchor tag for phone functionality */}
                 <a 
-                  href="tel:+13212361956"
+                  href="tel:+19379639424"
                   className="w-full bg-white text-blue-600 py-3 rounded-lg hover:bg-gray-50 transition-colors font-semibold flex items-center justify-center gap-2"
                 >
                   <Phone className="w-5 h-5" />
-                  Call (321) 236-1956
+                  Call (937) 963-9424
                 </a>
                 
                 {/* FIXED: Convert button to anchor tag for email functionality */}

@@ -27,9 +27,9 @@ const contactMethods = [
   {
     icon: Phone,
     title: "Call Us",
-    detail: "(321) 236-1956",
+    detail: "(937) 963-9424",
     description: "Speak directly with our PhD experts",
-    action: "tel:+13212361956",
+    action: "tel:+19379639424",
     actionText: "Call Now"
   },
   {

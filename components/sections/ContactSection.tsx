@@ -152,8 +152,8 @@ export default function ContactSection() {
                 <div className="ml-4">
                   <h4 className="text-lg font-semibold text-gray-900 mb-1">Call Us</h4>
                   <p className="text-gray-600">
-                    <a href="tel:+13212361956" className="hover:text-blue-600 transition-colors">
-                      (321) 236-1956
+                    <a href="tel:+19379639424" className="hover:text-blue-600 transition-colors">
+                      (937) 963-9424
                     </a>
                   </p>
                   <p className="text-sm text-gray-500 mt-1">Mon-Fri 9AM-6PM EST</p>
